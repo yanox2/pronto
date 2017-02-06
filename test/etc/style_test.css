@@ -1,0 +1,89 @@
+@charaset "utf-8";
+/* Copyright 2016 dodat */
+/*---------------------------------------------------------------------------*
+ *
+ * for User
+ *
+ *---------------------------------------------------------------------------*/
+body {
+/*
+	margin: 0px;
+	padding: 0px;
+	text-align: center;
+	background: #cccccc;
+	background-color: beige;
+*/
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+th{
+	padding:0 3px;
+}
+td{
+	padding:0 3px;
+}
+
+/*---------------------------------------------------------------------------*
+ * layout
+ *---------------------------------------------------------------------------*/
+#lay_center{
+	min-height: 1000px;
+	border-left: 1px solid #999999;
+	font-size: 14px;
+	line-height: 26px;
+	/*color: #4d4d4d;*/
+	background-color: white;
+	box-shadow: 2px 0px 2px -2px rgba(0, 0, 0, 0.52) inset;
+}
+
+/*---------------------------------------------------------------------------*
+ * selector
+ *---------------------------------------------------------------------------*/
+ul.sm-sidemenu ul{
+	display: none;
+	position: static !important;
+	top: auto !important;
+	left: auto !important;
+	width: auto !important;
+	min-width: 0 !important;
+	max-width: none !important;
+	margin-left: 0 !important;
+	margin-top: 0 !important;
+}
+
+.SideMenu{
+	text-align: center;
+}
+.SideMenu .item{
+    padding: 5px 20px !important;
+    line-height: 2.5em !important;
+    color: #333333 !important;
+}
+.SideMenu ul{
+	border: none;
+	background-color: #f2f2f2;
+}
+.SideMenu li a:hover{
+	background-color: #e0e0e8;
+}
+.SideMenu .active{
+	border-top: 1px solid #999999;
+	border-bottom: 1px solid #999999;
+	border-collapse: collapse;
+	background-color: #e0e0e8 !important;
+}
+
+.SecHeader{
+	margin:0 0 30px;
+	padding-left: 10px;
+	font-size: 22px;
+	border-left: 8px solid lightslategray;
+	text-shadow: 2px 2px 2px #cccccc;
+}
+
+/*---------------------------------------------------------------------------*
+ * Form
+ *---------------------------------------------------------------------------*/
+#bar1{
+	font-size: 0.9em;
+}

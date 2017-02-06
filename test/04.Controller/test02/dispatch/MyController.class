@@ -1,0 +1,63 @@
+<?php
+/* Copyright 2016 dodat */
+/*---------------------------------------------------------------------------*
+ * Controller
+ *      コントローラ（ディスパッチ）
+ *---------------------------------------------------------------------------*/
+
+class MyController extends \PR\Controller{
+
+	private $sDir_ = null;
+
+	// @Override
+	protected function before(){
+		$root = \PR\SysEnv::getYourDispRoot();
+		$this->sDir_ = $root.'/tpl/';
+	}
+
+	public function action_menu(){
+		$v = $this->getView();
+		$v->setTemplate($this->sDir_.'menu.tpl');
+	}
+
+	public function action_get(){
+		$v = $this->getView();
+		$v->setValue('methodType','GET');
+		$v->setTemplate($this->sDir_.'test02.tpl');
+	}
+
+	public function action_post(){
+		$v = $this->getView();
+		$v->setValue('methodType','POST');
+		$v->setTemplate($this->sDir_.'test02.tpl');
+		//$this->setRedirect('0402.php');
+	}
+
+	public function action_ajax(){
+		$this->ajax();
+		$this->resAjax(0,'0402 OK!!',array('methodType'=>'ajax'));
+	}
+
+	public function action_exp(){
+		$v = $this->getView();
+		$v->setValue('methodType','GET');
+		$v->setTemplate($this->sDir_.'test02.tpl');
+		throw new \PR\Exception(-1,'エラーメッセージを出力します。');
+	}
+
+	public function action_fatal(){
+		throw new \PR\Exception(-1,'Fatal Error!! です。バックボタンで戻ってください。',true);
+	}
+
+	// @Override
+	protected function after(){
+		$st = intval($_GET['st']);
+		if($st == 2){
+			//\PR\HTTPUtil::redirect('0402.php');
+		}else{
+			// 無視される
+			//throw new \PR\Exception(-1,'Fatal Error!!',true);
+		}
+	}
+}
+?>

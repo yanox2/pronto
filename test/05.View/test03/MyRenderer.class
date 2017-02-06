@@ -1,0 +1,63 @@
+<?php
+/* Copyright 2016 dodat */
+/*---------------------------------------------------------------------------*
+ * View
+ *      レンダラー
+ *---------------------------------------------------------------------------*/
+
+class MyRenderer extends \PR\LayoutAdapter{
+
+	public function __construct($rsHomeDir){
+		parent::__construct();
+		$root = \PR\SysEnv::getYourDocRoot();
+		$path = $root.'/etc/';
+
+		$this->noRobots();
+		$this->addSheet($path.'style_pronto.css');
+		$this->addScript($path.'jquery-2.1.4.min.js');
+		$this->addScript($path.'script_pronto.js');
+		$this->setClass(\PR\Layout::BODY,'fontM');
+		$this->setStyle(\PR\Layout::BODY,'margin:0; color:black; background-color:#f2f2f2;');
+		$this->setLayoutTemplate(\PR\Layout::HEADER,$rsHomeDir.'/test/etc/header.tpl');
+		$this->setLayoutTemplate(\PR\Layout::FOOTER,$rsHomeDir.'/test/etc/footer.tpl');
+		$styles = array('','font-size:18px;','font-size:18px;','font-size:18px;');
+		$this->setMessageStyles($styles);
+		$script = ''
+			.'  $("#postId").click(function(){'."\n"
+			.'    $("<form/>",{action:"0503.php?st=2",method:"post"})'."\n"
+			.'      .append($("<input/>",{type:"hidden",name:"pd",value:"hello!!"}))'."\n"
+			.'      .appendTo(document.body)'."\n"
+			.'      .submit();'."\n"
+			.'    //$.post("0502.php?st=2",{"pd":"hello!!"});'."\n"
+			.'  });'."\n"
+			.'  $("#ajaxId").click(function(){'."\n"
+			.'    $.ajax({'."\n"
+			.'      type: "get",'."\n"
+			.'      url: "0503.php?st=3",'."\n"
+			.'      async:false,'."\n"
+			.'      cache:false,'."\n"
+			.'      timeout:30000,'."\n"
+			.'      dataType:"jsonp",'."\n"
+			.'      jsonp:"jcbk",'."\n"
+			.'      data: {"pd":"hello!!"},'."\n"
+			.'    }).done(function(data,status,xhr){'."\n"
+			.'      // 通信成功時の処理'."\n"
+			.'      alert(status+" "+" "+data.message+" "+data.methodType+"!!");'."\n"
+			.'    }).fail(function(xhr,status,error){'."\n"
+			.'      // 通信失敗時の処理'."\n"
+			.'    }).always(function(arg1,status,arg2){'."\n"
+			.'      // 通信完了時の処理'."\n"
+			.'    });'."\n"
+			.'  });'."\n";
+		$this->addScriptCode($script);
+	}
+
+	// @Override
+	protected function htmlHeader(){
+	}
+
+	public function setCenter($rsPath){
+		$this->setLayoutTemplate(\PR\Layout::CENTER,$rsPath);
+	}
+}
+?>
