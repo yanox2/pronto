@@ -1,0 +1,50 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class - Exception
+ *      共通例外
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class Exception extends \Exception{
+
+	private $iCode_ = 0;
+	private $sMessage_ = null;
+	private $bFatal_ = false;
+
+	private $sCaption_ = null;
+
+	public function __construct($riCode,$rsMessage,$rbFatal=false){
+		parent::__construct($rsMessage,$riCode);
+		$this->iCode_ = $riCode;
+		$this->sMessage_ = $rsMessage;
+		$this->bFatal_ = $rbFatal;
+		$str = 'Exp!:rc='.$this->iCode_.':'.$rsMessage;
+		if($rbFatal){
+			 $str = 'fatal:'.$str.':stack='.var_export($this->getTrace(),true);
+		}
+		if($riCode > -400) ELOG($str,true);
+	}
+
+	public function getCaption(){
+		return $this->sCaption_;
+	}
+
+	public function setCaption($rsCaption){
+		$this->sCaption_ = $rsCaption;
+	}
+
+	public function isFatalError(){
+		return $this->bFatal_;
+	}
+
+	public function printStackTrace($riLevel=-1){
+		$str = 'code='.$this->iCode_.',msg='.$this->sMessage_;
+		$str .= ',trace='.var_export($this->getTrace(),true)."<br>\n";
+		ELOG($str,true);
+	}
+
+	// parent methods
+	// getMessage(), getCode(), getFile(), getLine(), getTrace(), getPrevious(), getTraceAsString()
+}
+?>

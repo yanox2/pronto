@@ -1,0 +1,443 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      その他のユーティリティ
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class Misc{
+
+	const WEEK_SUN = 0;
+	const WEEK_MON = 1;
+	const WEEK_TUE = 2;
+	const WEEK_WED = 3;
+	const WEEK_THU = 4;
+	const WEEK_FRI = 5;
+	const WEEK_SAT = 6;
+
+/*---------------------------------------------------------------------------*
+ * 文字列操作
+ *---------------------------------------------------------------------------*/
+	public static function getShortText($rsText,$riLength=0){
+		$len = $riLength;
+		if($len == 0) $len = 25;
+		$text = mb_substr($rsText,0,$len);
+		if(mb_strlen($text) == $len) $text .= '…';
+		return $text;
+	}
+
+	public static function getFillStr($rsStr,$riVisLen=0,$rsFill='*'){
+		$vlen = $riVisLen;
+		$len = strlen($rsStr);
+		$str = '';
+		for($i=0; $i<$len; $i++){
+			$chr = $rsFill;
+			if($i < $vlen) $chr = substr($rsStr,$i,1);
+			$str .= $chr;
+		}
+		return $str;
+	}
+
+	public static function createString($riLength){
+		$len = $riLength;
+		$str = '';
+		$ascii = ord('a');
+		for($i=0; $i<$len; $i++){
+			$shift = mt_rand(0,26+9);
+			if($shift < 26){
+				$str .= chr($ascii + $shift);
+			}else{
+				$str .= strval($shift - 26);
+			}
+		}
+		return $str;
+	}
+
+	public static function trim($rsStr,$rsMask=null){
+		$str = preg_replace('/^[ 　]+/u','',$str);
+		$str = preg_replace('/[ 　]+$/u','',$str);
+		if(empty($rsMask)){
+			$str = trim($rsStr);
+		}else{
+			$str = trim($rsStr,$rsMask);
+		}
+		return $str;
+	}
+
+/*---------------------------------------------------------------------------*
+ * 日付・時間関連
+ *---------------------------------------------------------------------------*/
+	// unixtimeの取得（日付）
+	public static function getDate($riDate,$riDay=0,$riMon=0,$riYear=0){
+		$iYear = date('Y',$riDate);
+		$iMon = date('m',$riDate);
+		$iDay = date('d',$riDate);
+		$dDate = mktime(0,0,0,$iMon+$riMon,$iDay+$riDay,$iYear+$riYear);
+		return $dDate;
+	}
+
+	// unixtimeの取得（時刻）
+	public static function getTime($riTime,$riDay=0,$riMon=0,$riYear=0,$riHour=0,$riMin=0,$riSec=0){
+		$iYear = date('Y',$riTime);
+		$iMon = date('m',$riTime);
+		$iDay = date('d',$riTime);
+		$iHour = date('H',$riTime);
+		$iMin = date('i',$riTime);
+		$iSec = date('s',$riTime);
+		$dDate = mktime($iHour+$riHour,$iMin+$riMin,$iSec+$riSec,$iMon+$riMon,$iDay+$riDay,$iYear+$riYear);
+		return $dDate;
+	}
+
+	// unixtimeの取得（時刻文字列）
+	public static function getTimeOfString($rsTimeStr,$riDay=0,$riMon=0,$riYear=0,$riHour=0,$riMin=0,$riSec=0){
+		$iYear = intval(substr($rsTimeStr,0,4));
+		$iMon = intval(substr($rsTimeStr,5,2));
+		$iDay = intval(substr($rsTimeStr,8,2));
+		$iHour = 0;
+		$iMin = 0;
+		$iSec = 0;
+		if(strlen($rsTimeStr) > 10){
+			$iHour = intval(substr($rsTimeStr,11,2));
+			$iMin = intval(substr($rsTimeStr,14,2));
+		}
+		if(strlen($rsTimeStr) > 16){
+			$iSec = intval(substr($rsTimeStr,17,2));
+		}
+		$dDate = mktime($iHour+$riHour,$iMin+$riMin,$iSec+$riSec,$iMon+$riMon,$iDay+$riDay,$iYear+$riYear);
+		return $dDate;
+	}
+
+	public static function isDate($rsTimeStr){
+		return true;
+	}
+
+	public static function isHoliday($riDate){
+		$week = date('w',$riDate);
+		if(($week == 0)||($week == 6)) return true;
+		return false;
+	}
+
+	public function getWeekStr($riWeek){
+		$array = array('日','月','火','水','木','金','土');
+		return $array[$riWeek];
+	}
+
+/*---------------------------------------------------------------------------*
+ * 取引関連
+ *---------------------------------------------------------------------------*/
+	public static function moneyStr($rsStr){
+		if(!is_numeric($rsStr)) return '0';
+		$str = '';
+		$cnt = 0;
+		for($i=strlen($rsStr)-1; $i>-1; $i--){
+			$chr = substr($rsStr,$i,1);
+			if(($cnt%3 == 0)&&($cnt != 0)&&($chr != '-')) $str = ','.$str;
+			$str = $chr.$str;
+			$cnt++;
+		}
+		return '￥'.$str;
+	}
+
+	public static function getTax(){
+		$tax = 0.05;
+		$now = time();
+		$tm1 = self::getTimeOfString('2014/04/01');
+		$tm2 = self::getTimeOfString('2015/04/01');
+		if($now > $tm1) $tax = 0.08;
+		else if($now > $tm2) $tax = 0.1;
+		return $tax;
+	}
+
+/*---------------------------------------------------------------------------*
+ * ゴミ
+ *---------------------------------------------------------------------------*/
+/*
+	function sNGWordKey($r_iDate){
+		$key = md5('weoijbil;;reweki;;').$r_iDate;
+		return $key;
+	}
+
+	function bIsNGWord($r_sStr,$r_aNGWords=null){
+		if(isset($_POST['ps_tmkey'])){
+			$key = $_POST['ps_tmkey'];
+			$tm = substr($_POST['ps_tmkey'],32);
+			if($key != PRMisc::sNGWordKey($tm)) return true;
+			$now = time();
+			if($tm > $now) return true;
+			if(($now - $tm) < 10) return true;
+			if(($now - $tm) > 1500) return true;
+		}
+		if(!preg_match('/[^0-9A-z!-~\n\r 　]/',$r_sStr)) return true;
+
+		if(empty($r_aNGWords)){
+			$r_aNGWords = array('精力剤','gg377.com','b8y.in','gffz.biz');
+		}
+
+		foreach($r_aNGWords as $sNGWord){
+			if(strpos($r_sStr,$sNGWord) !== false) return true;
+		}
+
+		return false;
+	}
+
+	function sGetPaging($r_iLimit,$r_iPage,$r_iAllNum,$r_iNum,$r_iPageNum,$r_sURL,$r_sStyle=null){
+		$start = $r_iLimit * $r_iPage + 1;
+		$end = $start + $r_iNum - 1;
+		$str = '<div class="paging" style="'.$r_sStyle.'">';
+		$numstr = '（'.$start.'－'.$end.'／'.$r_iAllNum.'件）';
+		$str .= '<span style="float:left;">'.($r_iPage+1).'ページ目'.$numstr.'</span>';
+		$str2 = '';
+		$sp = '';
+		if($r_iPage > 0){
+			$pg = $r_iPage - 1;
+			$str2 .= '<span style="margin:0 5px;"><a href="'.$r_sURL.'&pg='.$pg.'">&lt;&lt; Page '.($pg+1).'</a></span>';
+			$sp = '|';
+		}
+		if($r_iPage != 0) $str2 .= $sp.'<span style="margin:0 5px;"><a href="'.$r_sURL.'">top</a></span>';
+		if($r_iPage < $r_iPageNum-1){
+			$pg = $r_iPage + 1;
+			$str2 .= $sp.'<span style="margin:0 5px;"><a href="'.$r_sURL.'&pg='.$pg.'">Page '.($pg+1).' &gt;&gt;</a></span>';
+		}
+		$str .= '<span style="float:right;">'.$str2.'</span></div>';
+		if((!empty($r_sStyle))&&(empty($str2))) $str = '';
+		return $str;
+	}
+
+	function replaceImageTags($r_sStr,$r_sRep){
+		$ptn = '/<img[^>]*(https?:.*?(gif|jpeg|jpg|bmp)).*?>/i';
+		$sub = '<a href="\\1">'.$r_sRep.'</a>';
+		return preg_replace($ptn,$sub,$r_sStr);
+	}
+
+	function sCreateNCodeHashKey($r_sWID,$r_sNCode){
+		return md5($r_sWID.'0pp2984)();;'.$r_sNCode);
+	}
+
+	function iGetDateOfDay($r_iDate,$r_iDay=0,$r_iMonth=0,$r_iYear=0){
+		$sDate = date('Y/m/d',$r_iDate);
+		$sYear = substr($sDate,0,4);
+		$sMonth = substr($sDate,5,2);
+		$sDay = substr($sDate,8,2);
+		$dDate = mktime(0,0,0,$sMonth+$r_iMonth,$sDay+$r_iDay,$sYear+$r_iYear);
+
+		return $dDate;
+	}
+
+	function iGetDateOfTime($r_iDate,$r_iDay=0,$r_iMonth=0,$r_iYear=0,$r_iHour=0,$r_iMin=0,$r_iSec=0){
+		$sDate = date('Y/m/d',$r_iDate);
+		$iYear = date('Y',$r_iDate);
+		$iMonth = date('m',$r_iDate);
+		$iDay = date('d',$r_iDate);
+		$iHour = date('H',$r_iDate);
+		$iMin = date('i',$r_iDate);
+		$iSec = date('s',$r_iDate);
+		$dDate = mktime($iHour+$r_iHour,$iMin+$r_iMin,$iSec+$r_iSec,$iMonth+$r_iMonth,$iDay+$r_iDay,$iYear+$r_iYear);
+
+		return $dDate;
+	}
+
+	function iGetDateOfString($r_sDate,$r_iDay=0,$r_iMonth=0,$r_iYear=0){
+		$sYear = substr($r_sDate,0,4);
+		$sMonth = substr($r_sDate,5,2);
+		$sDay = substr($r_sDate,8,2);
+		$sHour = 0;
+		$sMinute = 0;
+		$sSec = 0;
+		if(strlen($r_sDate) > 10){
+			$sHour = substr($r_sDate,11,2);
+			$sMinute = substr($r_sDate,14,2);
+		}
+		if(strlen($r_sDate) > 16){
+			$sSec = substr($r_sDate,17,2);
+		}
+		$dDate = mktime($sHour,$sMinute,$sSec,$sMonth+$r_iMonth,$sDay+$r_iDay,$sYear+$r_iYear);
+
+		return $dDate;
+	}
+
+	function sGetWeekStr($r_iDate){
+		$week = date('w',$r_iDate);
+		$array = array('日','月','火','水','木','金','土');
+		return $array[$week];
+	}
+
+	function aGetYML($url){
+		$aYML = null;
+		$aStatus = HEMisc::requestHTTP($url);
+		if($aStatus['Status-Code'] != 200) return null;
+		$num=count($aStatus);
+		$aTmp = array();
+		$i=0;
+		while(trim($aStatus[$i]) != '---'){
+			$i++;
+			if($i > $num) break;
+		}
+		$i++;
+		while($i < $num){
+			$line = trim($aStatus[$i]);
+			if($line == '-'){
+				if($aYML == null) $aYML = array();
+				if(count($aTmp) != 0) $aYML[$aTmp['ncode']] = $aTmp;
+				$aTmp = array();
+				$i++;
+				continue;
+			}
+			if(strpos($line,':') === false){
+				$aTmp[$aParts[0]] .= " ".$line;
+				$i++;
+				continue;
+			}
+			$aParts = explode(": ",$line);
+			if($aParts[0] == 'allcount'){
+				$i++;
+				continue;
+			}
+			$aTmp[$aParts[0]] = $aParts[1];
+			if($aParts[1] == '>'){
+				$i++;
+				$line = trim($aStatus[$i]);
+				$aTmp[$aParts[0]] = $line;
+			}
+			$i++;
+		}
+		if(count($aTmp) != 0) $aYML[$aTmp['ncode']] = $aTmp;
+
+		return $aYML;
+	}
+
+	function requestSimpleHTTP($url){
+		$status = array();
+		$str = file_get_contents($url);
+		if($str === false){
+			$status['HTTP-Version'] = '---';
+			$status['Status-Code'] = '901';
+			$status['Reason-Phrase'] = "Unable To Connect";
+			fclose($handle);
+			return $status;
+		}
+		$status = explode("\n",$str);
+		$status['Status-Code'] = '200';
+		return $status;
+	}
+
+	function requestHTTP($url){
+		$inf = parse_url($url);
+		$host = $inf['host'];
+		$path = $inf['path'];
+		$query = $inf['query'];
+		$port = 80;
+
+		$req = "GET ".$path."?".$query." HTTP/1.0\r\n";
+		$req .= "Host: $host\r\n";
+		$req .= "User-Agent: Mozilla/4.0 Windows; U; Windows NT 5.1; ja; rv:1.8.1.1) Gecko/20061204 Firefox/2.0.0.1\r\n";
+		$req .= "Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,※/*;q=0.5\r\n";
+		$req .= "Accept-Language: ja,en-us;q=0.7,en;q=0.3\r\n";
+		//$req .= "Accept-Encoding: gzip,deflate\r\n";
+		$req .= "Accept-Charset: Shift_JIS,utf-8;q=0.7,*;q=0.7\r\n\r\n";
+
+		$status = array();
+		$handle = @fsockopen($host,$port,$errno,$errstr,1);
+		if(!$handle){
+			$status['HTTP-Version'] = '---';
+			$status['Status-Code'] = '901';
+			$status['Reason-Phrase'] = "Unable To Connect";
+			fclose($handle);
+			return $status;
+		}
+
+		fputs($handle,$req);
+		if(!socket_set_timeout($handle,10)){
+			$status['HTTP-Version'] = '---';
+			$status['Status-Code'] = '902';
+			$status['Reason-Phrase'] = "No Response";
+			fclose($handle);
+			return $status;
+		}
+
+		$line = 0;
+		while(!feof($handle)){
+			// 1行めはステータスライン
+			if($line == 0){
+				$temp_stat = explode(' ',fgets($handle,4096));
+				$status['HTTP-Version'] = array_shift($temp_stat);
+				$status['Status-Code'] = array_shift( $temp_stat );
+				$status['Reason-Phrase'] = implode(' ',$temp_stat);
+			}else{
+				//$temp_stat = explode(':',fgets($handle,4096));
+				//$name = array_shift($temp_stat);
+				// 通常:の後に1文字半角スペースがあるので除去
+				array_push($status,fgets($handle,4096));
+			}
+			$line++;
+		}
+		fclose($handle);
+
+		return $status;
+	}
+
+	function requestHTTP_POST($url,$post){
+		$inf = parse_url($url);
+		$host = $inf['host'];
+		$path = $inf['path'].'?'.$inf['query'];
+		$port = 80;
+
+		$req = "POST ".$path." HTTP/1.0\r\n";
+		$req .= "Host: $host\r\n";
+		$req .= "User-Agent: PHP/".phpversion()."\r\n";
+		$req .= "Content-type: application/x-www-form-urlencoded; charset=utf-8\r\n"; 
+		$req .= "Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,※/*;q=0.5\r\n";
+		$req .= "Accept-Language: ja,en-us;q=0.7,en;q=0.3\r\n";
+		//$req .= "Accept-Encoding: gzip,deflate\r\n";
+		$req .= "Accept-Charset: Shift_JIS,utf-8;q=0.7,*;q=0.7\r\n";
+
+		while(list($name,$value) = each($post)){
+			$sPost[] = $name."=".urlencode($value);
+		}
+		$postdata = implode("&",$sPost);
+		$req .= "Content-Length: ".strlen($postdata)."\r\n";
+		$req .= "\r\n";
+		$req .= $postdata."\r\n";
+
+		$status = array();
+		$handle = @fsockopen($host,$port,$errno,$errstr,1);
+		if(!$handle){
+			$status['HTTP-Version'] = '---';
+			$status['Status-Code'] = '901';
+			$status['Reason-Phrase'] = "Unable To Connect";
+			fclose($handle);
+			return $status;
+		}
+
+		fputs($handle,$req);
+		if(!socket_set_timeout($handle,10)){
+			$status['HTTP-Version'] = '---';
+			$status['Status-Code'] = '902';
+			$status['Reason-Phrase'] = "No Response";
+			fclose($handle);
+			return $status;
+		}
+
+		$line = 0;
+		while(!feof($handle)){
+			// 1行めはステータスライン
+			if($line == 0){
+				$temp_stat = explode(' ',fgets($handle,4096));
+				$status['HTTP-Version'] = array_shift($temp_stat);
+				$status['Status-Code'] = array_shift( $temp_stat );
+				$status['Reason-Phrase'] = implode(' ',$temp_stat);
+			}else{
+				//$temp_stat = explode(':',fgets($handle,4096));
+				//$name = array_shift($temp_stat);
+				// 通常:の後に1文字半角スペースがあるので除去
+				array_push($status,fgets($handle,4096));
+			}
+			$line++;
+		}
+		fclose($handle);
+
+		return $status;
+	}
+*/
+}
+?>

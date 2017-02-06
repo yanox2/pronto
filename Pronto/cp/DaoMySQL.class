@@ -1,0 +1,232 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class - Data Access Object
+ *      MySQL用DBアクセスオブジェクト
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class DaoMySQL extends Dao{
+
+	private static $oDB__ = null;
+	private $oRes_ = null;
+	private $aRows_ = null;
+	private $sSql_ = null;
+
+	private $sHost_ = null;
+	private $sUser_ = null;
+	private $sPass_ = null;
+	private $sName_ = null;
+
+	private $iNumRows_ = 0;
+	private static $aHistory_ = array();
+
+/*---------------------------------------------------------------------------*
+ * Public Methods
+ *---------------------------------------------------------------------------*/
+	public function getError(){
+		return self::$oDB__->error;
+	}
+
+	public static function getSQLHistory(){
+		return self::$aHistory_;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Inherited Abstract Methods
+ *---------------------------------------------------------------------------*/
+	public function __construct($sHost,$sUser,$sPass,$sName){
+		$this->sHost_ = $sHost;
+		$this->sUser_ = $sUser;
+		$this->sPass_ = $sPass;
+		$this->sName_ = $sName;
+	}
+
+	public function connect(){
+		if(!empty(self::$oDB__)) return;
+		self::$oDB__ = new \mysqli($this->sHost_,$this->sUser_,$this->sPass_,$this->sName_);
+		if(self::$oDB__->connect_errno) $this->_errorOccured('connect');
+		$rc = self::$oDB__->set_charset('utf8');
+		if($rc === false) $this->_errorOccured('set_charset');
+	}
+
+	public function close(){
+		if(!empty(self::$oDB__)) self::$oDB__->close();
+	}
+
+	public function begin(){
+		if(empty(self::$oDB__)) $this->_errorOccured('begin',C_PR_ERR_ECONNECT);
+		$rc = self::$oDB__->query('begin');
+		if($rc === false) $this->_errorOccured('begin');
+	}
+
+	public function commit(){
+		if(empty(self::$oDB__)) $this->_errorOccured('commit',C_PR_ERR_ECONNECT);
+		$rc = self::$oDB__->commit();
+		if($rc === false) $this->_errorOccured('commit');
+	}
+
+	public function rollback(){
+		if(empty(self::$oDB__)) return;
+		$rc = self::$oDB__->rollback();
+	}
+
+	public function changeDB($rsName){
+		if($rsName == $this->sName_) return;
+		if(empty(self::$oDB__)) $this->_errorOccured('changeDB',C_PR_ERR_ECONNECT);
+		$rc = self::$oDB__->select_db($rsName);
+		if($rc === false) $this->_errorOccured('changeDB');
+		$this->sName_ = $rsName;
+	}
+
+	public function query($rsSql){
+		if(empty(self::$oDB__)) $this->_errorOccured('query',C_PR_ERR_ECONNECT);
+		$this->sSql_ = Misc::trim($rsSql);
+		self::$aHistory_[] = $rsSql;
+		$rc = self::$oDB__->query($this->sSql_);
+		if($rc === false){
+			$code = self::$oDB__->errno;
+			if($code == 1065) return C_PR_ERR_ENOENT; // 1065:ER_EMPTY_QUERY
+			if(($code == 1022)||($code == 1062)) return C_PR_ERR_EEXIST; // 1022:ER_DUP_KEY 1062:ER_DUP_ENTRY
+			$this->_errorOccured('query');
+		}
+		$this->oRes_ = $rc;
+		return 0;
+	}
+
+	public function select($rsTable,$raSels,$raWheres=null,$rsToken=null){
+		if(empty(self::$oDB__)) $this->_errorOccured('select',C_PR_ERR_ECONNECT);
+		$sql = 'select ';
+		$sp='';
+		foreach($raSels as $column){
+			$sql .= $sp.$column;
+			$sp = ',';
+		}
+		$sql .= ' from '.$rsTable;
+		$sql .= $this->getWhereToken($raWheres,$rsToken);
+		$sql .= ';';
+
+		$rc = $this->query($sql);
+		if($rc != 0) return $rc;
+		if($this->oRes_->num_rows == 0){
+			$this->oRes_ = null;
+			return C_PR_ERR_ENOENT;
+		}
+		$this->iNumRows_ = $this->oRes_->num_rows;
+		return 0;
+	}
+
+	public function fetch($rbDup=false){
+		if(empty(self::$oDB__)) $this->_errorOccured('fetch',C_PR_ERR_ECONNECT);
+		$this->aRows_ = null;
+		if(empty($this->oRes_)) return C_PR_ERR_ENOENT;
+		$type = MYSQLI_ASSOC;
+		if($rbDup) $type = MYSQLI_BOTH;
+		$this->aRows_ = $this->oRes_->fetch_array($type);
+		if(empty($this->aRows_)) return C_PR_ERR_ENOENT;
+		return 0;
+	}
+
+	public function get($rsColumn){
+		return stripslashes($this->aRows_[$rsColumn]);
+	}
+
+	public function getAll(){
+		return $this->aRows_;
+	}
+
+	public function free(){
+		$this->aRows_ = null;
+		if(!empty($this->oRes_)) $this->oRes_->free();
+	}
+
+	public function insert($rsTable,$raIns){
+		if(empty(self::$oDB__)) $this->_errorOccured('insert',C_PR_ERR_ECONNECT);
+		$sql = 'insert into '.$rsTable.' (';
+		$sp='';
+		foreach($raIns as $column => $value){
+			$sql .= $sp.$column;
+			$sp = ',';
+		}
+		$sql .= ') values(';
+		$sp='';
+		foreach($raIns as $column => $value){
+			$sql .= $sp.$this->quoteGPC($value,$column);
+			$sp = ',';
+		}
+		$sql .= ');';
+
+		$rc = $this->query($sql);
+		return $rc;
+	}
+
+	public function delete($rsTable,$raWheres,$rsToken=null){
+		if(empty(self::$oDB__)) $this->_errorOccured('delete',C_PR_ERR_ECONNECT);
+		$sql = 'delete from '.$rsTable;
+		$sql .= $this->getWhereToken($raWheres,$rsToken);
+		$sql .= ';';
+
+		$rc = $this->query($sql);
+		return $rc;
+	}
+
+	public function update($rsTable,$raSets,$raWheres=null,$rsToken=null,$rsSetToken=null){
+		if(empty(self::$oDB__)) $this->_errorOccured('update',C_PR_ERR_ECONNECT);
+		$sql = 'update '.$rsTable.' set ';
+		$sp='';
+		if(!empty($raSets)){
+			foreach($raSets as $column => $value){
+				$sql .= $sp.$column.'='.$this->quoteGPC($value,$column);
+				$sp = ',';
+			}
+		}
+		if(!empty($rsSetToken)) $sql .= $sp.$rsSetToken;
+		$sql .= $this->getWhereToken($raWheres,$rsToken);
+		$sql .= ';';
+
+		$rc = $this->query($sql);
+		if($rc != 0) return $rc;
+		$this->iNumRows_ = self::$oDB__->affected_rows;
+		return 0;
+	}
+
+	public function getNumRows(){
+		if(($this->iNumRows_ == 0)&&(!empty($this->oRes_))) $this->iNumRows_ = $this->oRes_->num_rows;
+		return $this->iNumRows_;
+	}
+
+	public function getSQL(){
+		return $this->sSql_;
+	}
+
+	protected function safeString($rsValue){
+		return self::$oDB__->real_escape_string($rsValue);
+	}
+
+/*---------------------------------------------------------------------------*
+ * Private Methods
+ *---------------------------------------------------------------------------*/
+	private function _errorOccured($rsPhase,$riCode=C_PR_ERR_EDBACS){
+		$code = $riCode;
+		$message = SMSG('PR_E010',$rsPhase);
+		if($code == C_PR_ERR_ECONNECT) $message = SMSG('PR_E009',$rsPhase);
+		$error = '';
+		$errno = 0;
+		$state = 0;
+		$sql = $this->sSql_;
+		if(!empty(self::$oDB__)){
+			$state = self::$oDB__->sqlstate;
+			if($rsPhase == 'connect'){
+				$error = self::$oDB__->connect_error;
+				$errno = self::$oDB__->connect_errno;
+			}else{
+				$error = self::$oDB__->error;
+				$errno = self::$oDB__->errno;
+			}
+		}
+		$this->rollback();
+		$this->close();
+		throw new SQLException($code,$message,$error,$errno,$state,$sql);
+	}
+}
+?>

@@ -1,0 +1,101 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Abstract class - Data Access Object
+ *      DBアクセスオブジェクトクラス
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+abstract class Dao{
+
+	const PFIX_STRING = 's_';
+
+	const DB_MYSQL = 1;
+	const DB_POSTGRES = 2;
+
+/*---------------------------------------------------------------------------*
+ * Abstract Methods
+ *---------------------------------------------------------------------------*/
+	abstract public function __construct($sHost,$sUser,$sPass,$sName);
+	abstract public function connect();
+	abstract public function close();
+	abstract public function begin();
+	abstract public function commit();
+	abstract public function rollback();
+	abstract public function changeDB($rsName);
+	abstract public function query($rsSql);
+	abstract public function select($rsTable,$raSels,$raWheres=null,$rsToken=null);
+	abstract public function fetch();
+	abstract public function get($rsColumn);
+	abstract public function getAll();
+	abstract public function free();
+	abstract public function insert($rsTable,$raIns);
+	abstract public function delete($rsTable,$raWheres,$rsToken=null);
+	abstract public function update($rsTable,$raSets,$raWheres=null,$rsToken=null,$rsSetToken=null);
+	abstract public function getNumRows();
+	abstract public function getSQL();
+	abstract protected function safeString($rsValue);
+
+/*---------------------------------------------------------------------------*
+ * Public Methods
+ *---------------------------------------------------------------------------*/
+	public static function getTokenKeywords($rsKeywords,$raCols){
+		$token = '';
+		if(empty($rsKeywords)) return $token;
+		$aWords = preg_split("/(\s|　)+/",$rsKeywords);
+		if(empty($aWords)) return $token;
+
+		$sp = '';
+		$token = '(';
+		foreach($aWords as $keyword){
+			$token .= $sp;
+			$like = ' like "%'.$keyword.'%"';
+			$sp2 = '';
+			$token .= '(';
+			foreach($raCols as $column){
+				$token .= $sp2.$column.$like;
+				$sp2 = ' or ';
+			}
+			$token .= ')';
+			$sp = ' and ';
+		}
+		$token .= ')';
+		return $token;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Protected Methods
+ *---------------------------------------------------------------------------*/
+	protected function getWhereToken($raWheres,$rsToken=null){
+		$rsToken = Misc::trim($rsToken);
+		$sql='';
+		if(!empty($raWheres)){
+			$sql .= ' where ';
+			$sp='';
+			foreach($raWheres as $column => $value){
+				$op = '=';
+				$parts = explode(' ',$column);
+				if(count($parts) > 1) $op = $parts[1];
+				$sql .= $sp.$parts[0].$op.$this->quoteGPC($value,$parts[0]);
+				$sp = ' and ';
+			}
+		}
+		if(!empty($rsToken)) $sql .= ' '.$rsToken;
+		return $sql;
+	}
+
+	protected function quoteGPC($rsValue,$rsColumn=null){
+		$value = $rsValue;
+		if(ini_get('magic_quote_gpc') == 'On') $value = stripslashes($value);
+		if(!is_numeric($value)){
+			$value = "'".$this->safeString($value)."'";
+		}else if(!empty($rsColumn)){
+			$len = strlen(Dao::PFIX_STRING);
+			if(substr($rsColumn,0,$len) == Dao::PFIX_STRING){
+				$value = "'".$this->safeString($value)."'";
+			}
+		}
+		return $value;
+	}
+}
+?>

@@ -1,0 +1,91 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Abstract class - View
+ *      レイアウトクラス
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+abstract class Layout implements Renderable{
+
+	const BODY = 0;
+	const HEADER = 1;
+	const LEFT = 2;
+	const CENTER = 3;
+	const RIGHT = 4;
+	const FOOTER = 5;
+	const SCRIPT = 6;
+
+	protected $aVals = array();
+	protected $oMessage = null;
+
+/*---------------------------------------------------------------------------*
+ * Abstract Methods
+ *---------------------------------------------------------------------------*/
+	abstract public function hasLayoutTemplate($riLayout);
+	abstract public function setLayoutTemplate($riLayout,$rsFile);
+	abstract protected function htmlHeader();
+	abstract protected function header();
+	abstract protected function left();
+	abstract protected function center();
+	abstract protected function right();
+	abstract protected function footer();
+	abstract protected function script();
+	abstract protected function htmlFooter();
+
+/*---------------------------------------------------------------------------*
+ * Implement Methods
+ *---------------------------------------------------------------------------*/
+	public function get($rsVar){
+		return $this->aVals[$rsVar];
+	}
+
+	public function getAll(){
+		return $this->aVals;
+	}
+
+	public function set($rsVar,$rmVal){
+		$this->aVals[$rsVar] = $rmVal;
+	}
+
+	public function hasTemplate(){
+		return $this->hasLayoutTemplate(self::CENTER);
+	}
+
+	public function setTemplate($rsPath){
+		$this->setLayoutTemplate(self::CENTER,$rsPath);
+	}
+
+	public function setMessage($rsMessage,$riType){
+		$this->oMessage->add($rsMessage,$riType);
+	}
+
+	public function render(){
+		$this->htmlHeader();
+		if($this->hasLayoutTemplate(self::HEADER)) $this->header();
+		if($this->hasLayoutTemplate(self::LEFT)) $this->left();
+		if($this->hasLayoutTemplate(self::CENTER)) $this->center();
+		if($this->hasLayoutTemplate(self::RIGHT)) $this->right();
+		if($this->hasLayoutTemplate(self::FOOTER)) $this->footer();
+		if($this->hasLayoutTemplate(self::SCRIPT)) $this->script();
+		$this->htmlFooter();
+	}
+
+/*---------------------------------------------------------------------------*
+ * Public Methods
+ *---------------------------------------------------------------------------*/
+	public function setMessageStyles($raStyles,$raClasses=null){
+		$this->oMessage->setStyles($raStyles);
+		if($raClasses == null) return;
+		$this->oMessage->setClassNames($raClasses);
+	}
+
+/*---------------------------------------------------------------------------*
+ * Protected Methods
+ *---------------------------------------------------------------------------*/
+
+/*---------------------------------------------------------------------------*
+ * Private Methods
+ *---------------------------------------------------------------------------*/
+}
+?>

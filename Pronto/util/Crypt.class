@@ -1,0 +1,38 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      暗号・複合
+ *---------------------------------------------------------------------------*/
+namespace PR;
+require_once('Crypt/Blowfish.php');
+
+class Crypt{
+
+	private static $aKeys__ = array('pass'=>'oIwjp&FoE34iJf4$&3984%#%','card'=>'weofj948&$YYhIfd98e$$wsA');
+
+	public static function setKey($rsKey,$rsVal){
+		if(strlen($rsVal) != 24) return false;
+		self::$aKeys__[$rsKey] = $rsVal;
+		return true;
+	}
+
+	public static function encrypt($rsStr,$rsType='pass'){
+		$str = '#$o('.$rsStr;
+		$bf = new \Crypt_Blowfish(self::$aKeys__[$rsType]);
+		$enc = base64_encode($bf->encrypt($str));
+		return $enc;
+	}
+
+	public static function decrypt($rsStr,$rsType='pass'){
+		$bf = new \Crypt_Blowfish(self::$aKeys__[$rsType]);
+		$dec = $bf->decrypt(base64_decode($rsStr));
+		$str = substr($dec,4);
+		$hex = bin2hex($str);
+		$hex = ereg_replace('00','',$hex);
+		//$hex = rtrim($hex,"\0");
+		$str = pack("H*", $hex);
+		return $str;
+	}
+}
+?>

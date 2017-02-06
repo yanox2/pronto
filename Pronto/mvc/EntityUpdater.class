@@ -1,0 +1,17 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Interface - Controller
+ *      エンティティ更新インタフェース
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+interface EntityUpdater{
+
+	// エンティティ更新前処理
+	public function beforeAdd($roEntity);
+	public function beforeRemove($roEntity);
+	public function beforeUpdate($roEntity);
+
+}
+?>

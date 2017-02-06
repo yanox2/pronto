@@ -1,0 +1,172 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      メッセージクラス
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class Message{
+
+	// Message Types
+	const ERROR = 1;
+	const WARNING = 2;
+	const NORMAL = 3;
+
+	// Action Types
+	const INLINE = 1;
+	const DIALOG = 2;
+
+	// Messages
+	private $aErrors_ = array();
+	private $aWarnings_ = array();
+	private $aNormals_ = array();
+
+	private $aClasses_ = array();
+	private $aStyles_ = array();
+
+	public function __construct(){
+		$this->aClasses_ = array('',C_PR_PREFIX_STYLE.'msg_error',C_PR_PREFIX_STYLE.'msg_warning',C_PR_PREFIX_STYLE.'msg_normal');
+		$this->aStyles_ = array('','','','');
+	}
+
+/*---------------------------------------------------------------------------*
+ * public methods
+ *---------------------------------------------------------------------------*/
+	public function setClassNames($raClasses){
+		$this->aClasses_ = $raClasses;
+	}
+
+	public function setClassName($rsClass,$riType=self::ERROR){
+		$this->aClasses_[$riType] = $rsClass;
+	}
+
+	public function setStyles($raStyles){
+		$this->aStyles_ = $raStyles;
+	}
+
+	public function setStyle($rsStyle,$riType=self::ERROR){
+		$this->aStyles_[$riType] = $rsStyle;
+	}
+
+	public function add($rsMessage,$riType=self::ERROR){
+		if($riType == self::ERROR){
+			$this->aErrors_[] = $rsMessage;
+		}else if($riType == self::WARNING){
+			$this->aWarnings_[] = $rsMessage;
+		}else if($riType == self::NORMAL){
+			$this->aNormals_[] = $rsMessage;
+		}
+	}
+
+	public function remove($riType=self::ERROR){
+		if($riType == self::ERROR){
+			$this->aErrors_[] = array();
+		}else if($riType == self::WARNING){
+			$this->aWarnings_[] = array();
+		}else if($riType == self::NORMAL){
+			$this->aNormals_[] = array();
+		}
+	}
+
+	public function load($rsName=null){
+		$fx = C_PR_PREFIX_SESSION;
+		if($rsName == null) $rsName = $fx.'Messages';
+		if(!isset($_SESSION[$rsName])) return;
+		$msg = $_SESSION[$rsName];
+		$type = $_SESSION[$rsName.'_Type'];
+
+		$aMsgs = explode("\n",$msg);
+		if($type == self::ERROR){
+			$this->aErrors_ = $aMsgs;
+		}else if($type == self::WARNING){
+			$this->aWarnings_ = $aMsgs;
+		}else if($type == self::NORMAL){
+			$this->aNormals_ = $aMsgs;
+		}
+
+		unset($_SESSION[$rsName]);
+		unset($_SESSION[$rsName.'_Type']);
+	}
+
+	public function save($rsName=null){
+		$fx = C_PR_PREFIX_SESSION;
+		if($rsName == null) $rsName = $fx.'Messages';
+		$type = self::ERROR;
+		if(!empty($this->aErrors_)){
+			$type = self::ERROR;
+		}else if(!empty($this->aWarnings_)){
+			$type = self::WARNING;
+		}else if(!empty($this->aNormals_)){
+			$type = self::NORMAL;
+		}
+		$_SESSION[$rsName] = $this->toString($type);
+		$_SESSION[$rsName.'_Type'] = $type;
+	}
+
+	public function toHTML($riType=self::INLINE){
+		if(empty($this->aErrors_)&&empty($this->aWarnings_)&&empty($this->aNormals_)) return null;
+		$sp = '<br>';
+		if($riType == self::DIALOG) $sp = "\n";
+		$error = $this->toString(self::ERROR,$sp);
+		$warning = $this->toString(self::WARNING,$sp);
+		$normal = $this->toString(self::NORMAL,$sp);
+
+		$html = '';
+		if($riType == self::INLINE){
+			if(!empty($error)){
+				$class = $this->aClasses_[self::ERROR];
+				$style = $this->aStyles_[self::ERROR];
+				$html .= '<div class="'.$class.'" style="'.$style.'">';
+				//$html .= '<button type="button" class="close" data-dismiss="alert">&times;</button>';
+				$html .= $error.'</div>'."\n";
+			}
+			if(!empty($warning)){
+				$class = $this->aClasses_[self::WARNING];
+				$style = $this->aStyles_[self::WARNING];
+				$html .= '<div class="'.$class.'" style="'.$style.'">';
+				//$html .= '<button type="button" class="close" data-dismiss="alert">&times;</button>';
+				$html .= $warning.'</div>'."\n";
+			}
+			if(!empty($normal)){
+				$class = $this->aClasses_[self::NORMAL];
+				$style = $this->aStyles_[self::NORMAL];
+				$html .= '<div class="'.$class.'" style="'.$style.'">';
+				//$html .= '<button type="button" class="close" data-dismiss="alert">&times;</button>';
+				$html .= $normal.'</div>'."\n";
+			}
+		}else if($riType == self::DIALOG){
+			$html = '<scrpit type="text/JavaScript">'."\n";
+			$html .= ' var msg = "";'."\n";
+			if(!empty($error)) $html .= ' msg += "'.$error.'";'."\n";
+			if(!empty($warning)) $html .= ' msg += "'.$warning.'";'."\n";
+			if(!empty($normal)) $html .= ' msg += "'.$normal.'";'."\n";
+			$html .= ' alert(msg);'."\n";
+			$html .= '</script>'."\n";
+		}
+		return $html;
+	}
+
+	public function toString($riType=0,$rsSeparator="\n"){
+		$aMsgs = null;
+		if($riType == 0){
+			$aMsgs = $this->aErrors_ + $this->aWarnings_ + $this->aNormals_;
+		}else if($riType == self::ERROR){
+			$aMsgs = $this->aErrors_;
+		}else if($riType == self::WARNING){
+			$aMsgs = $this->aWarnings_;
+		}else if($riType == self::NORMAL){
+			$aMsgs = $this->aNormals_;
+		}
+		if(empty($aMsgs)) return null;
+
+		$str = '';
+		$sp = '';
+		foreach($aMsgs as $msg){
+			$str .= $sp.$msg;
+			$sp = $rsSeparator;
+		}
+		return $str;
+	}
+}
+?>

@@ -1,0 +1,33 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class - Exception
+ *      SQL例外
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class SQLException extends Exception{
+
+	private $sError_ = null;
+	private $iErrNo_ = 0;
+	private $iSqlState_ = 0;
+	private $sSql_ = null;
+
+	public function __construct($riCode,$rsMessage,$rsError,$riErrNo,$riSqlState,$rsSql){
+		$msg = $rsMessage.':err="'.$rsError.'" errno='.$riErrNo.' sqlstate='.$riSqlState.' sql="'.$rsSql.'"';
+		$this->sError_ = $rsError;
+		$this->iErrNo_ = $riErrNo;
+		$this->iSqlState_ = $riSqlState;
+		$this->sSql_ = $rsSql;
+		parent::__construct($riCode,$msg,true);
+	}
+
+	public function printStackTrace(){
+		$str = 'code='.$this->iCode_.',msg='.$this->sMessage_;
+		$str .= ',err='.$this->sError_.',errno='.$this->iErrNo_;
+		$str .= ',sqlstate='.$this->iSqlState_.',sql='.$this->sSql_;
+		$str .= ',trace='.var_export($this->getTrace(),true)."<br>\n";
+		print $str;
+	}
+}
+?>

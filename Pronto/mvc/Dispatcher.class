@@ -1,0 +1,222 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class - Dispatcher
+ *      ディスパッチ制御クラス
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class Dispatcher{
+
+	const MODE_NONE = 0;
+	const MODE_CONTROLLER = 1;
+	const MODE_CALL = 2;
+	const MODE_INCLUDE = 3;
+
+	const TYPE_CSS = 1;
+	const TYPE_IMAGE = 2;
+	const TYPE_JAVASCRIPT = 3;
+
+	protected $iMode = 0;
+	protected $sDestClass = null;
+	protected $sDestMethod = null;
+	protected $sDestPath = null;
+
+/*---------------------------------------------------------------------------*
+ * Public Methods
+ *---------------------------------------------------------------------------*/
+	public function setMode($riMode){
+		$this->iMode = $riMode;
+	}
+
+	public final function dispatch(){
+		$mode = SysEnv::getSubSysMode();
+		if($mode != 0) Request::setSubSystem();
+		$dest = null;
+		try{
+			$this->alterSysEnv();
+			$this->preproc();
+			$this->_preproc();
+			if($this->iMode == self::MODE_CONTROLLER){
+				$dest = $this->getDest();
+			}else if($this->iMode == self::MODE_CALL){
+				$dest = $this->getDest();
+			}else if($this->iMode == self::MODE_INCLUDE){
+				$dest = $this->getDestPath();
+			}
+			if(empty($dest)){
+				throw new Exception(C_PR_ERR_ENODEST,'',true);
+			}
+
+		}catch(Exception $e){
+			if($e->isFatalError()) $this->showFatalError($e);
+			exit();
+		}
+
+		if($this->isReadFile()){
+			header('Content-Type: '.Request::$sACCEPT.'; charset=utf-8');
+			readfile($dest);
+			exit();
+		}
+
+		if($this->iMode == self::MODE_NONE){
+			return;
+		}else if($this->iMode == self::MODE_CONTROLLER){
+			$class = $dest['class'];
+			$method = $dest['method'];
+			$ins = new $class();
+			if(($method != 'action')&&(!is_callable(array($ins,$method)))){
+				ELOG(SMSG('PR_E013',$class.' '.$method));
+				return;
+			}
+			Request::setDestMethod($dest);
+			$ins->setAction($method);
+			$ins->run();
+		}else if($this->iMode == self::MODE_CALL){
+			$class = $dest['class'];
+			$method = $dest['method'];
+			$ins = new $class();
+			if(!is_callable(array($ins,$method))){
+				ELOG(SMSG('PR_E013',$class.' '.$method));
+				return;
+			}
+			Request::setDestMethod($dest);
+			$ins->{$method}();
+		}else if($this->iMode == self::MODE_INCLUDE){
+			Request::setDestPath($dest);
+			require($dest);
+		}
+	}
+
+	public final function getContentType($rsPath=null){
+		$info = new FInfo(FILEINFO_MIME_TYPE);
+		$mime = $info->file($rsPath);
+		return $mime;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Protected Methods
+ *---------------------------------------------------------------------------*/
+	protected function alterSysEnv(){
+	}
+
+	protected function preproc(){
+	}
+
+	protected function getDest(){
+		$path = Request::$sSUBDIR2;
+		if(empty($path)){
+			ELOG(SMSG('PR_E013',$path));
+			return null;
+		}
+		$parts = explode('/',$path);
+		if(count($parts) < 2){
+			ELOG(SMSG('PR_E013',$path));
+			return null;
+		}
+		$num = count($parts);
+		$dest = array('class'=>$parts[$num-2],'method'=>$parts[$num-1]);
+		return $dest;
+	}
+
+	protected function getDestPath(){
+		$root = HTTPUtil::formatURL(SysEnv::getYourDispRoot());
+		$path = Request::$sSUBDIR2;
+		$script = Request::$sFILE;
+		$uri = $path;
+		if(!empty($script)) $uri .= '/'.$script;
+		$dest = '/'.HTTPUtil::formatURL($root.'/'.$uri);
+		if(!file_exists($dest)){
+			ELOG(SMSG('PR_E007',$dest));
+			exit();
+		}
+		return $dest;
+	}
+
+	protected function isReadFile($rsPath=null){
+		if($this->isScript($rsPath)) return false;
+		return true;
+	}
+
+	protected function isScript($rsPath=null){
+		//$headers = getallheaders();
+		$file = basename($rsPath);
+		if(empty($file)) $file = Request::$sFILE;
+		if(empty($file)) return true;
+
+		$aScriptExts = array('php','sphp','class','inc','tpl');
+		$pos = strrpos($file,'.');
+		if($pos === false) return true;
+		$ext = substr($file,$pos+1);
+		if(in_array($ext,$aScriptExts)) return true;
+		return false;
+	}
+
+	protected function showFatalError($roExp){
+		//header("HTTP/1.0 404 Not Found");
+		$code = $roExp->getCode();
+		$msg = $roExp->getMessage();
+		$caption = $roExp->getCaption();
+		if(empty($caption)) $caption = 'Error occured!';
+		if($code == C_PR_ERR_ENODEST){
+			$msg = 'The requested URL '.$_SERVER["REQUEST_URI"].' was not found on this server.';
+			$caption = 'Not Found';
+		}
+		print '<!DOCTYPE html>'."\n";
+		print '<!-- 文字コード判別用 -->'."\n";
+		print '<html lang="ja">'."\n";
+		print '<head>'."\n";
+		print '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'."\n";
+		print '<meta name="robots" content="noindex,nofollow">'."\n";
+		print '<title></title>'."\n";
+		print '</head>'."\n";
+		print '<body>'."\n";
+		print '<h1>'.$caption.'</h1>'."\n";
+		print '<div style="font-size:14px;">'.$msg.'</div>'."\n";
+		print '</body>'."\n";
+		print '</html>'."\n";
+	}
+
+	protected function getReadFileType($rsPath=null){
+		// accept
+		if(strpos(Request::$sACCEPT,'text/css') !== false) return self::TYPE_CSS;
+		if(strpos(Request::$sACCEPT,'image/') !== false) return self::TYPE_IMAGE;
+		if(strpos(Request::$sACCEPT,'text/html') !== false) return self::TYPE_TEXT;
+		if(empty($rsPath)) return self::TYPE_TEXT;
+
+		// file extension
+		$file = basename($rsPath);
+		$pos = strrpos($file,'.');
+		if($pos !== false){
+			$ext = substr($file,$pos+1);
+			if($ext == 'js') return self::TYPE_JAVASCRIPT;
+			if($ext == 'gif') return self::TYPE_IMAGE;
+			if($ext == 'jpg') return self::TYPE_IMAGE;
+			if($ext == 'png') return self::TYPE_IMAGE;
+			if($ext == 'bmp') return self::TYPE_IMAGE;
+		}
+		return self::TYPE_TEXT;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Private Methods
+ *---------------------------------------------------------------------------*/
+	private function _preproc(){
+		// メンテナンスモード
+		if(SysEnv::getMainteMode() == 1){
+			require(SysEnv::getMaintePath());
+			exit();
+		}
+
+		// ディスパッチ先ディレクトリ
+		$path = SysEnv::getYourDispRoot();
+		if(empty($path)){
+			ELOG(SMSG('PR_E007',$path));
+			exit();
+		}else if(!file_exists($path)){
+			ELOG(SMSG('PR_E007',$path));
+			exit();
+		}
+	}
+}
+?>

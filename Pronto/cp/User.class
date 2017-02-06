@@ -1,0 +1,371 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      ユーザ基底クラス
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class User{
+
+	protected $oDao = null;
+	protected $oMySubSys = null;
+	protected $oMyProf = null;
+
+	protected $oMail = null;
+	protected $oMessage = null;
+
+	private $sSesPrefix_ = C_PR_PREFIX_SESSION;
+	private $sCkPrefix_ = C_PR_PREFIX_COOKIE;
+
+	public function __construct(){
+		$this->oDao = \PR\DaoFactory::create();
+		$this->oMySubSys = new \PR\SubSystem($this->oDao);
+		$this->oMyProf = new \PR\UserProfile($this->oDao);
+		$this->oMail = new \PR\Mail();
+		$this->oMessage = new \PR\Message();
+	}
+
+/*---------------------------------------------------------------------------*
+ * Getter Setter
+ *---------------------------------------------------------------------------*/
+	public function setPrefixes($raPrefixes){
+		$this->sSesPrefix_ = $raPrefixes['session'];
+		$this->sCkPrefix_ = $raPrefixes['cookie'];
+	}
+
+	public function getSubSystem($riType=\PR\Model::TYPE_BEAN){
+		if($riType == \PR\Model::TYPE_BEAN) return $this->oMySubSys->getBean();
+		if($riType == \PR\Model::TYPE_POST) return $this->oMySubSys->getPost();
+		if($riType == \PR\Model::TYPE_LIST) return $this->oMySubSys->getList();
+	}
+
+	public function getProfile($riType=\PR\Model::TYPE_BEAN){
+		if($riType == \PR\Model::TYPE_BEAN) return $this->oMyProf->getBean();
+		if($riType == \PR\Model::TYPE_POST) return $this->oMyProf->getPost();
+		if($riType == \PR\Model::TYPE_LIST) return $this->oMyProf->getList();
+	}
+
+/*---------------------------------------------------------------------------*
+ * Reader
+ *---------------------------------------------------------------------------*/
+	public function numSubSys($raWheres=null,$rsTokens=null){
+		return $this->oMySubSys->num($raWheres,$rsTokens);
+	}
+
+	public function readSubSys($riSysId,$rbHasLock=false){
+		if(empty($riSysId)) return C_PR_ERR_ENOENT;
+		$aWheres = $this->oMySubSys->convert(array('iSysId'=>$riSysId));
+		$sTokens = null;
+		if($rbHasLock) $sTokens = 'for update';
+		$rc = $this->oMySubSys->read($aWheres,$sTokens);
+		return $rc;
+	}
+
+	public function readSubSysBySysName($rsSysName,$rbHasLock=false){
+		if(empty($rsSysName)) return C_PR_ERR_ENOENT;
+		$aWheres = $this->oMySubSys->convert(array('sSysName'=>$rsSysName));
+		$sTokens = null;
+		if($rbHasLock) $sTokens = 'for update';
+		$rc = $this->oMySubSys->read($aWheres,$sTokens);
+		return $rc;
+	}
+
+	public function numProf($raWheres=null,$rsTokens=null){
+		return $this->oMyProf->num($raWheres,$rsTokens);
+	}
+
+	public function readProfByBean($roBean,$rbHasLock=false){
+		if(empty($roBean)) return C_PR_ERR_ENOENT;
+		if(empty($roBean->iSysId)) return C_PR_ERR_ENOENT;
+
+		$sysId = $roBean->iSysId;
+		$aWheres = $this->oMyProf->convert(array('iSysId'=>$sysId));
+		if(!empty($roBean->iUserId)){
+			$ninf = $this->oMyProf->getNameInf('iUserId');
+			$aWheres[$ninf->sColumn] = $roBean->iUserId;
+		}else if(!empty($roBean->sLoginId)){
+			$ninf = $this->oMyProf->getNameInf('sLoginId');
+			$aWheres[$ninf->sColumn] = $roBean->sLoginId;
+		}else{
+			return C_PR_ERR_ENOENT;
+		}
+		$sTokens = null;
+		if($rbHasLock) $sTokens = 'for update';
+		$rc = $this->oMyProf->read($aWheres,$sTokens);
+		if($rc != 0) return $rc;
+		$prof = $this->oMyProf->getBean();
+		if(!empty($prof->sPasswd)) $prof->sPasswd = \PR\Crypt::decrypt($prof->sPasswd,'pass');
+		if($this->oMySubSys->isEmpty()){
+			$rc = $this->readSubSys($sysId);
+			if($rc != 0) return $rc;
+		}
+		return 0;
+	}
+
+	public function readProf($riSysId,$riUserId,$rbHasLock=false){
+		if((empty($riSysId))||(empty($riUserId))) return C_PR_ERR_ENOENT;
+		$aWheres = $this->oMyProf->convert(array('iSysId'=>$riSysId,'iUserId'=>$riUserId));
+		$sTokens = null;
+		if($rbHasLock) $sTokens = 'for update';
+		$rc = $this->oMyProf->read($aWheres,$sTokens);
+		if($rc != 0) return $rc;
+		$prof = $this->oMyProf->getBean();
+		if(!empty($prof->sPasswd)) $prof->sPasswd = \PR\Crypt::decrypt($prof->sPasswd,'pass');
+		if($this->oMySubSys->isEmpty()){
+			$rc = $this->readSubSys($riSysId);
+			if($rc != 0) return $rc;
+		}
+		return 0;
+	}
+
+	public function readProfByLoginId($riSysId,$rsLoginId,$rbHasLock=false){
+		if((empty($riSysId))||(empty($rsLoginId))) return C_PR_ERR_ENOENT;
+		$aWheres = $this->oMyProf->convert(array('iSysId'=>$riSysId,'sLoginId'=>$rsLoginId));
+		$sTokens = null;
+		if($rbHasLock) $sTokens = 'for update';
+		$rc = $this->oMyProf->read($aWheres,$sTokens);
+		if($rc != 0) return $rc;
+		$prof = $this->oMyProf->getBean();
+		if(!empty($prof->sPasswd)) $prof->sPasswd = \PR\Crypt::decrypt($prof->sPasswd,'pass');
+		if($this->oMySubSys->isEmpty()){
+			$rc = $this->readSubSys($riSysId);
+			if($rc != 0) return $rc;
+		}
+		return 0;
+	}
+
+	public function listsProf($raWheres=null,$rsTokens=null,$raIndex=null){
+		return $this->oMyProf->lists($raWheres,$rsTokens,$raIndex);
+	}
+
+	public function pageProf($riPage,$riLimit,$raWheres=null,$rsTokens=''){
+		$rc = $this->num($raWheres,$sTokens);
+		if($rc != 0) return $rc;
+		$this->oPaging = new \PR\Paging($riPage,$riLimit,$rc);
+		$tokens = $rsTokens.' '.$this->oPaging->getSql();
+		return $this->oMyProf->list($raWheres,$tokens);
+	}
+
+/*---------------------------------------------------------------------------*
+ * Post
+ *---------------------------------------------------------------------------*/
+	public function postProf(){
+		$post = $this->oMyProf->post();
+		$msg = '';
+		$msg .= $this->oMyProf->checkPassword('sLoginId',$post->sLoginId,C_PR_MIN_PASSWDLEN);
+		$msg .= $this->oMyProf->checkPassword('sPasswd',$post->sPasswd,C_PR_MIN_PASSWDLEN,C_PR_MAX_PASSWDLEN,C_PR_MIN_PASSWDKIND);
+		$msg .= $this->oMyProf->checkPost('sName',$post->sName);
+		$msg .= $this->oMyProf->checkPost('sEMail',$post->sEMail);
+		$msg .= $this->oMyProf->checkPost('iLocale',$post->iLocale,true);
+		$msg .= $this->oMyProf->checkPost('sNote',$post->sNote,true);
+		return $msg;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Update
+ *---------------------------------------------------------------------------*/
+	public function addProf($riSysId){
+		$rc = $this->oMyProf->add();
+		return $rc;
+	}
+
+	public function updateProf($riSysId){
+		$prof = $this->oMyProf->getBean();
+		$post = $this->oMyProf->getPost();
+		if((empty($prof->iSysId))||(empty($prof->iUserId))){
+			$this->errorOccured(C_PR_ENOENT,'E001',$post->sName);
+		}
+		if($riSysId != $prof->iSysId){
+			$this->errorOccured(C_PR_ENOENT,'E001',$post->sTitle);
+		}
+
+		if($prof->sPasswd != $post->sPasswd) $prof->iChangeDate = time();
+		$prof->sLoginId = $post->sLoginId;
+		$pass = $post->sPasswd;
+		$prof->sPasswd = \PR\Crypt::encrypt($pass,'pass');
+		$prof->sName = $post->sName;
+		$prof->sEMail = $post->sEMail;
+		$prof->iLocale = $post->iLocale;
+		$prof->sNote = $post->sNote;
+		$sets = $prof->getArray(Model::TYPE_DATA);
+		$rc = $this->oMyProf->update($sets);
+		if($rc != 0) return $rc;
+		$prof->sPasswd = $pass;
+		$this->setSession(true);
+		$this->setCookie2($prof->sLoginId,$post->sPasswd);
+		return 0;
+	}
+
+	public function getItemsProf($rsSuffix=''){
+		return $this->oMyProf->getItemArray($rsSuffix);
+	}
+
+/*---------------------------------------------------------------------------*
+ * Message
+ *---------------------------------------------------------------------------*/
+	public function getMessage(){
+		$this->oMessage->load();
+		return $this->oMessage->toString();
+	}
+
+	public function setMessage($rsMessage,$riType=\PR\Message::NORMAL){
+		$this->oMessage->add($rsMessage,$riType);
+		$this->oMessage->save();
+	}
+
+	public function loadMessage(){
+		$this->oMessage->load();
+	}
+
+	public function saveMessage(){
+		$this->oMessage->save();
+	}
+
+/*---------------------------------------------------------------------------*
+ * Session & Cookie
+ *---------------------------------------------------------------------------*/
+	public function startSession(){
+		session_start();
+	}
+
+	public function fromSession(){
+		$fx = $this->sSesPrefix_;
+		$prof = $this->oMyProf->newBean();
+		$prof->iSysId = $_SESSION[$fx.'SysId'];
+		$prof->iUserId = $_SESSION[$fx.'UserId'];
+		$prof->sLoginId = $_SESSION[$fx.'LoginId'];
+		$prof->sName = $_SESSION[$fx.'Name'];
+		$prof->iLastLogin = $_SESSION[$fx.'LastLogin'];
+	}
+
+	public function setSession($rbNoLastLogin=false){
+		$fx = $this->sSesPrefix_;
+		$prof = $this->oMyProf->getBean();
+		$_SESSION[$fx.'SysId'] = $prof->iSysId;
+		$_SESSION[$fx.'UserId'] = $prof->iUserId;
+		$_SESSION[$fx.'LoginId'] = $prof->sLoginId;
+		$_SESSION[$fx.'Name'] = $prof->sName;
+		if(!$rbNoLastLogin) $_SESSION[$fx.'LastLogin'] = $prof->iLastLogin;
+	}
+
+	public function clearSession(){
+		$fx = $this->sSesPrefix_;
+		unset($_SESSION[$fx.'SysId']);
+		unset($_SESSION[$fx.'UserId']);
+		unset($_SESSION[$fx.'LoginId']);
+		unset($_SESSION[$fx.'Name']);
+		unset($_SESSION[$fx.'LastLogin']);
+	}
+
+	public function isJustAfterLogin(){
+		$fx = $this->sSesPrefix_;
+		$just = $_SESSION[$fx.'JustAfterLogin'];
+		unset($_SESSION[$fx.'JustAfterLogin']);
+		return $just;
+	}
+
+	public function hasCookie(){
+		return isset($_COOKIE[$this->sCkPrefix_.'LoginId']);
+	}
+
+	public function fromCookie(){
+		$fx = $this->sCkPrefix_;
+		$prof = $this->oMyProf->newPost();
+		$prof->sLoginId = $_COOKIE[$fx.'LoginId'];
+		$prof->sPasswd = $_COOKIE[$fx.'Passwd'];
+	}
+
+	public function setCookie($rsPostName){
+		$fx = $this->sCkPrefix_;
+		$time = time() + 30 * 24 * 3600;
+		$prof = $this->oMyProf->getPost();
+		if(!empty($_POST[$rsPostName])){
+			setcookie($fx.'LoginId',$prof->sLoginId,$time,'','',true);
+			setcookie($fx.'Passwd',$prof->sPasswd,$time,'','',true);
+		}else{
+			setcookie($fx.'LoginId');
+			setcookie($fx.'Passwd');
+		}
+	}
+
+	public function setCookie2($rsLoginId,$rsPasswd){
+		$fx = $this->sCkPrefix_;
+		$time = time() + 30 * 24 * 3600;
+		setcookie($fx.'LoginId',$rsLoginId,$time,'','',true);
+		setcookie($fx.'Passwd',$rsPasswd,$time,'','',true);
+	}
+
+/*---------------------------------------------------------------------------*
+ * Login
+ *---------------------------------------------------------------------------*/
+	public function isLogin(){
+		return isset($_SESSION[$this->sSesPrefix_.'UserId']);
+	}
+
+	public function login(){
+		$post = $this->oMyProf->post();
+		if((empty($post->sLoginId))||(empty($post->sPasswd))) return C_PR_ERR_EPARAM;
+		$rc = $this->readSubSysBySysName(\PR\Request::$sSUBSYSTEM);
+		if($rc != 0) return $rc;
+		$sys = $this->oMySubSys->getBean();
+		$post->iSysId = $sys->iSysId;
+		$rc = $this->readProfByBean($post);
+		if($rc != 0) return $rc;
+		$prof = $this->oMyProf->getBean();
+		if($post->iFail > 2) return C_PR_ERR_EOVER;
+		if($post->sPasswd == $prof->sPasswd) return 0;
+
+		// パスワード誤り
+		$num = $prof->iFail + 1;
+		$aSets = $this->oMyProf->convert(array('iFail'=>$num));
+		$rc = $this->oMyProf->update($aSets);
+		if($rc != 0) return $rc;
+		if($num > 2) return C_PR_ERR_EOVER;
+		return C_PR_ERR_EINVAL;
+	}
+
+	public function logout(){
+		$this->clearSession();
+	}
+
+	public function setLastLogin(){
+		$time = time();
+		$aSets = $this->oMyProf->convert(array('iLastLogin'=>$time,'iFail'=>0));
+		$rc = $this->oMyProf->update($aSets);
+		if($rc != 0) return $rc;
+		$_SESSION[$this->sSesPrefix_.'JustAfterLogin'] = true;
+		session_regenerate_id();
+		return 0;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Mail
+ *---------------------------------------------------------------------------*/
+	public function sendMail($rsSubject,$rsBody){
+		$prof = $this->oMyProf->getBean();
+		if(empty($prof->sName)) return false;
+		if(empty($prof->sEMail)) return false;
+		$to = array($prof->sEMail=>$prof->sName);
+		$rc = $this->oMail->send($to,$rsSubject,$rsBody);
+		return $rc;
+	}
+
+	public function sendMailEx($roProf,$rsSubject,$rsBody){
+		$prof = $roProf;
+		if(empty($prof->sName)) return false;
+		if(empty($prof->sEMail)) return false;
+		$to = array($prof->sEMail=>$prof->sName);
+		$rc = $this->oMail->send($to,$rsSubject,$rsBody);
+		return $rc;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Protected Methods
+ *---------------------------------------------------------------------------*/
+	protected function errorOccured($riCode,$rsMsgId,$rsSection){
+		$msg = OMSG($rsMsgId,$this->sMyName_.'.'.$rsSection);
+		throw new Exception($riCode,$msg,true);
+	}
+}
+?>

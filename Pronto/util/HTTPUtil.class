@@ -1,0 +1,449 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      HTTPユーティリティ
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class HTTPUtil{
+
+/*---------------------------------------------------------------------------*
+ * URL関連
+ *---------------------------------------------------------------------------*/
+	// URL
+	public static function isURL($rsStr){
+		if(preg_match("/^(https?|ftp)(:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)$/",$rsStr)){
+			return true;
+		}
+		return false;
+	}
+
+	// リダイレクト
+	public static function redirect($rsLocation){
+		$location = 'Location: '.$rsLocation;
+		header($location);
+		exit();
+	}
+
+	// SSL強制リダイレクト
+	public static function redirectSSL(){
+		if(!isset($_SERVER['HTTPS'])){
+			$url = 'https://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
+			$location = 'Location: '.$url;
+			header($location);
+			exit();
+		}
+	}
+
+	// URL整形
+	public static function formatURL($rsURL){
+		if(empty($rsURL)) return '';
+		if($rsURL == '.') return '';
+		$url = $rsURL;
+		$url = Misc::trim($url);
+		str_replace('./','/',$url);
+		while(strpos($url,'//') !== false) $url = str_replace('//','/',$url);
+		$url = Misc::trim($url,'/');
+		return $url;
+	}
+
+	// URIパース
+	public static function parseURI($rsURI,$rsIndex=''){
+		$uri = array('uri'=>'','dir'=>'','file'=>'','query'=>'','fragment'=>'');
+		if(empty($rsURI)) return $uri;
+		$url = self::formatURL($rsURI);
+		$uri['uri'] = $url;
+		$parts = parse_url($url);
+		if(array_key_exists('query',$parts)) $uri['query'] = $parts['query'];
+		if(array_key_exists('fragment',$parts)) $uri['fragment'] = $parts['fragment'];
+
+		$path = self::formatURL(dirname($url));
+		$base = basename($url);
+		$dir = '';$file = '';
+		if((strpos($base,'.') !== false)&&(strlen($base) > 2)){ // is file
+			$dir = $path;
+			$file = $base;
+			$pos = strpos($base,'?');
+			if($pos !== false) $file = substr($base,0,$pos);
+		}else if(!empty($uri['query'])){ // is file
+			$dir = $path;
+			$pos = strpos($base,'?');
+			$file = substr($base,0,$pos);
+			if(!empty($file)) $dir .= '/'.$file;
+			$file = '';
+		}else{
+			// 拡張子のないものはファイルとみなさない
+			$dir = self::formatURL($url);
+			$file = $rsIndex;
+		}
+		$uri['dir'] = $dir;
+		$uri['file'] = $file;
+		return $uri;
+	}
+
+/*---------------------------------------------------------------------------*
+ * POST関連
+ *---------------------------------------------------------------------------*/
+	public static function isPost($rsName=null){
+		if(empty($rsName)){
+			if($_SERVER['REQUEST_METHOD'] == 'POST') return true;
+		}else{
+			if(isset($_POST[$rsName])) return true;
+		}
+		return false;
+	}
+
+	public static function getPostValue($rsName,$riType=0){
+		if(!isset($_POST[$rsName])) return null;
+		$val = Misc::trim($_POST[$rsName]);
+		if(empty($val)) return $val;
+		return self::convPostVal($val,$riType);
+	}
+
+	public static function getPostValues($raPosts,$riType=0){
+		if(empty($raPosts)) return null;
+		$values = array();
+		foreach($raPosts as $name=>$post){
+			$post = Misc::trim($post);
+			if(empty($post)){
+				$values[$name] = $post;
+			}else{
+				$values[$name] = self::convPostVal($post,$riType);
+			}
+		}
+		return $values;
+	}
+
+	public static function convPostVal($rsVal,$riType){
+		$value = null;
+		switch($riType){
+		  case 0: // なし
+			$value = $rsVal;
+			break;
+		  case Model::DT_NUMERIC: // 数値
+			$value = intval(mb_convert_kana($rsVal,'a'));
+			break;
+		  case Model::DT_FLOAT:
+			$value = floatval(mb_convert_kana($rsVal,'a'));
+			break;
+		  case Model::DT_ALPHABET:
+		  case Model::DT_ALPHANUMERIC:
+		  case Model::DT_PASSWORD:
+		  case Model::DT_URL:
+		  case Model::DT_EMAIL:
+		  case Model::DT_POSTCODE:
+		  case Model::DT_TEL:
+		  case Model::DT_DATE:
+		  case Model::DT_DOMAIN:
+			$value = mb_convert_kana($rsVal,'a');
+			break;
+		  case Model::DT_TEXT: // 全角かなカナ
+			$value = mb_convert_kana($rsVal,'KV');
+			break;
+		}
+		return $value;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Ajax関連
+ *---------------------------------------------------------------------------*/
+	public static function resAjax($riCode,$rsMessage,$raRes=null){
+		if($raRes == null) $raRes = array();
+		$raRes['rcode'] = $riCode;
+		$raRes['message'] = $rsMessage;
+		$str  = $_GET['jcbk'].'(';
+		$str .= json_encode($raRes,JSON_UNESCAPED_UNICODE).')';
+		header('Content-Type: application/json');
+		print $str;
+	}
+
+/*---------------------------------------------------------------------------*
+ * デバイス関連
+ *---------------------------------------------------------------------------*/
+	// キャリア判別 0:PC 1:SoftBank 2:docomo 3:au 4:Android 5:apple
+	public static function getCareer($rsUA=null){
+		$ua = explode('/',$rsUA);
+		if(empty($rsUA)) $ua = explode('/',$_SERVER['HTTP_USER_AGENT']);
+
+		if((strpos($ua[0], 'J-PHONE') !== false)||
+			(strpos($ua[0],'Vodafone') !== false)||
+			(strpos($ua[0],'SoftBank') !== false)){
+			return 1;
+		}
+		if(strpos($ua[0],'DoCoMo') !== false){
+			return 2;
+		}
+		if(strpos($ua[0],'UP.Browser') !== false){
+			return 3;
+		}
+		if(strpos($ua[0],'Android') !== false){
+			return 4;
+		}
+		if((strpos($ua[0],'iPhone') !== false)||(strpos($ua[0],'iPod') !== false)){
+			return 5;
+		}
+		return 0;
+	}
+
+	// 個体識別番号取得
+	public static function getMobileId($rsUA=null,$rsSubNo=null){
+		$uaStr = $rsUA;
+		if(empty($uaStr)) $uaStr = $_SERVER['HTTP_USER_AGENT'];
+		$type = self::getCareer($uaStr);
+
+		$ua = explode('/',$uaStr);
+		$Id = null;
+		if($type == 1){ //SoftBank
+			$spos = strpos($ua,'/SN');
+			if($spos === false) return null;
+			$len = strpos($ua,' ',$spos) - $spos;
+			$Id = substr($ua,$spos,$len);
+		}else if($type == 2){ // docomo
+			$Id = $rsSubNo;
+			if(empty($Id)) $Id = $_SERVER['HTTP_X_DCMGUID'];
+		}else if($type == 3){ // au
+			$Id = $rsSubNo;
+			if(empty($Id)) $Id = $_SERVER['HTTP_X_UP_SUBNO'];
+		}
+		return $Id;
+	}
+
+	// 機種判別 0:PC 1:Tablet 2:Smart phone 3:Feature phone
+	public static function getDeviceType($rsUA=null){
+		$sUA = $rsUA;
+		if(empty($sUA)) $sUA = $_SERVER['HTTP_USER_AGENT'];
+		$mtype = self::getCareer($sUA);
+
+		$dtype = 0;
+		if($mtype == 0){
+			$dtype = 0;
+		}else if($mtype < 4){
+			$dtype = 3;
+		}else if($mtype == 4){
+			if(strpos($sUA,'Mobile') === false){
+				$dtype = 1;
+			}else{
+				$dtype = 2;
+			}
+		}else if($mtype == 5){
+			if(strpos($sUA,'iPad') === false){
+				$dtype = 2;
+			}else{
+				$dtype = 1;
+			}
+		}
+		return $dtype;
+	}
+
+	// 機種モデル名取得
+	public static function getDeviceName($rsUA=null){
+		$uaStr = $rsUA;
+		if(empty($uaStr)) $uaStr = $_SERVER['HTTP_USER_AGENT'];
+		$type = self::getCareer($uaStr);
+
+		$ua = explode('/',$uaStr);
+		$model = null;
+		if($type == 1){ // SoftBank
+			$ver = $ua[2];
+			if(strpos($ver,' Browser') !== false){
+				$len = strpos($ver,' Browser');
+				$ver = substr($ver,0,$len);
+			}
+			$model = $ver;
+			if(strpos($model,'/SN') !== false){
+				$len = strpos($model,'/SN');
+				$model = substr($model,0,$len);
+			}
+		}else if($type == 2){ // DoCoMo
+			$ver = substr($ua[1],0,3);
+			if($ver == '1.0'){
+				$model = $ua[2];
+			}else if($ver == '2.0'){
+				$spos = strpos($ua[1],'2.0') + 3;
+				$len = strpos($ua[1],'(',$spos+1) - $spos;
+				$model = substr($ua[1],$spos,$len);
+			}
+		}else if($type == 3){ // au
+			$spos = strpos($ua[0],'KDDI-') + 5;
+			$len = strpos($ua[0],' ',$spos+1) - $spos;
+			$model = substr($ua[0],$spos,$len);
+		}
+		return $model;
+	}
+
+	// キャリア判別 0:PC 1:SoftBank 2:docomo 3:au 4:willcom
+	public static function getCareerByMail($rsEMail){
+		if(substr($rsEMail,-14) == 'vodafone.ne.jp'){
+			return 1;
+		}
+		if(substr($rsEMail,-14) == 'softbank.ne.jp'){
+			return 1;
+		}
+		if(substr($rsEMail,-12) == 'docomo.ne.jp'){
+			return 2;
+		}
+		if(substr($rsEMail,-11) == 'ezweb.ne.jp'){
+			return 3;
+		}
+		if(substr($rsEMail,-9) == 'pdx.ne.jp'){
+			return 4;
+		}
+		return 0;
+	}
+
+/*---------------------------------------------------------------------------*
+ * IPアドレスと時間による認証
+ *---------------------------------------------------------------------------*/
+	public static function setSecureCode(){
+		$fx = C_PR_PREFIX_SESSION;
+		session_start();
+		$ip = $_SERVER['REMOTE_ADDR'];
+		if(empty($ip)) return;
+		$now = time();
+		$code = md5($now.'baaefewijo--ibjio36&&%w'.$ip);
+		$_SESSION[$fx.'scode_1'] = $ip;
+		$_SESSION[$fx.'scode_2'] = $now;
+		$_SESSION[$fx.'scode_3'] = $code;
+	}
+
+	public static function isSecure($riSec=10,$rsRef=null){
+		$fx = C_PR_PREFIX_SESSION;
+		$referer = $_SERVER['HTTP_REFERER'];
+		if((!empty($rsRef))&&($rsRef != $referer)) return false;
+		session_start();
+		$ip = $_SESSION[$fx.'scode_1'];
+		$time = $_SESSION[$fx.'scode_2'];
+		if($ip != $_SERVER['REMOTE_ADDR']) return false;
+		$rest = time() - $time;
+		if(($rest > $riSec)||($rest < 0)) return false;
+		$code = md5($time.'baaefewijo--ibjio36&&%w'.$ip);
+		if($code != $_SESSION[$fx.'scode_3']) return false;
+		unset($_SESSION[$fx.'scode_1']);
+		unset($_SESSION[$fx.'scode_2']);
+		unset($_SESSION[$fx.'scode_3']);
+		return true;
+	}
+
+/*---------------------------------------------------------------------------*
+ * 書式チェック
+ *---------------------------------------------------------------------------*/
+	// メールアドレス書式チェック
+	public static function isEMail($rsStr){
+		if(preg_match("/^[0-9A-Za-z][0-9a-zA-Z_\.-]+@[0-9A-Za-z][0-9a-zA-Z_\.-]+\.(af|al|dz|as|ad|ao|ai|aq|ag|ar|am|aw|ac|au|at|az|bh|bd|bb|by|bj|bm|bt|bo|ba|bw|br|io|bn|bg|bf|bi|kh|cm|ca|cv|cf|td|gg|je|cl|cn|cx|cc|co|km|cg|cd|ck|cr|ci|hr|cu|cy|cz|dk|dj|dm|do|tp|ec|eg|sv|gq|er|ee|et|fk|fo|fj|fi|fr|gf|pf|tf|fx|ga|gm|ge|de|gh|gi|gd|gp|gu|gt|gn|gw|gy|ht|hm|hn|hk|hu|is|in|id|ir|iq|ie|im|il|it|jm|jo|kz|ke|ki|kp|kr|kw|kg|la|lv|lb|ls|lr|ly|li|lt|lu|mo|mk|mg|mw|my|mv|ml|mt|mh|mq|mr|mu|yt|mx|fm|md|mc|mn|ms|ma|mz|mm|na|nr|np|nl|an|nc|nz|ni|ne|ng|nu|nf|mp|no|om|pk|pw|pa|pg|py|pe|ph|pn|pl|pt|pr|qa|re|ro|ru|rw|kn|lc|vc|ws|sm|st|sa|sn|sc|sl|sg|sk|si|sb|so|za|gs|es|lk|sh|pm|sd|sr|sj|sz|se|ch|sy|tw|tj|tz|th|bs|ky|tg|tk|to|tt|tn|tr|tm|tc|tv|ug|ua|ae|uk|us|um|uy|uz|vu|va|ve|vn|vg|vi|wf|eh|ye|yu|zm|zw|com|net|org|gov|edu|int|mil|biz|info|name|pro|jp)$/",$rsStr)){
+			return true;
+		}
+		return false;
+	}
+
+	// フリーのメールアドレスチェック
+	public static function isFreeMail($rsStr){
+		$domains = array('hotmail.','yahoo.','gmail.com','outlook.','live.jp','infoseek.jp','excite.co.jp',
+			'biglobe.','zoho.com','aol.jp','mail.goo.ne.jp','livedoor.com','auone.jp');
+		foreach($domains as $domain){
+			if(strpos($rsStr,$domain) !== false) return true;
+		}
+		$domains = array('.jp','.com','.biz','.net','.mobi');
+		$ng = true;
+		foreach($domains as $domain){
+			$pos = strpos($rsStr,$domain);
+			if($pos !== false){
+				$len = strlen($domain);
+				if($pos+$len == strlen($rsStr)) $ng = false;
+			}
+		}
+		return $ng;
+	}
+
+	// 企業ドメインのチェック
+	public static function isCompany($rsStr){
+		$len = strlen($rsStr);
+		$pos = strrpos($rsStr,'.co.jp');
+		if($pos === false) return false;
+		if($len - 6 == $pos) return true;
+		return false;
+	}
+
+	// 半角英数字チェック
+	public function isAlphabet($rsStr,$riType=0){
+		if($riType == 0){
+			if(preg_match('/^[a-zA-Z]+$/',$rsStr)) return true;
+		}else if($riType == 1){
+			if(preg_match('/^[a-zA-Z0-9]+$/',$rsStr)) return true;
+		}else if($riType == 2){
+			if(preg_match('/^[a-zA-Z0-9\.]+$/',$rsStr)) return true;
+		}
+		return false;
+	}
+
+	// 郵便番号書式チェック
+	public function isPostCode($rsStr){
+		if(preg_match('/^\d{3}\-\d{4}$/',$rsStr)) return true;
+		return false;
+	}
+
+	// 郵便番号書式チェック
+	public function isTel($rsStr){
+		if(preg_match('/^[0-9]{2,4}-[0-9]{2,4}-[0-9]{4}$/',$rsStr)) return true;
+		if(preg_match('/^[0-9]{2,4}-[0-9]{4}$/',$rsStr)) return true;
+		return false;
+	}
+
+	// パスワード書式チェック
+	public static function isPassword($rsStr,$riMinLen=0,$riMaxLen=0,$riKind=0){
+		preg_match("/[0-9a-zA-Z!#\$%\&'\*\+\/\=\?\^\|\-\{\}_\.]+/",$rsStr,$match);
+		if($match[0] != $rsStr) return C_PR_ERR_EINVAL;
+		if(($riMinLen > 0)&&(mb_strlen($rsStr) < $riMinLen)) return C_PR_ERR_ESHORT;
+		if(($riMaxLen > 0)&&(mb_strlen($rsStr) > $riMaxLen)) return C_PR_ERR_EOVER;
+		if($riKind == 0) return 0;
+
+		$hasNum = false;
+		$hasAlp = false;
+		$hasMak = false;
+		for($i=0; $i<strlen($rsStr); $i++){
+			$chr = substr($rsStr,$i,1);
+			if(is_numeric($chr)){
+				$hasNum = true;
+			}else if(preg_match("/[a-zA-Z]/",$chr)){
+				$hasAlp = true;
+			}else{
+				$hasMak = true;
+			}
+		}
+		$cnt=0;
+		if($hasNum) $cnt++;
+		if($hasAlp) $cnt++;
+		if($hasMak) $cnt++;
+		if($cnt < $riKind) return C_PR_ERR_EPARAM;
+		return 0;
+	}
+
+	// スクリプトファイル
+	public static function isScript($rsFile=null,$raExts=null){
+		$scriptExts = $raExts;
+		if(empty($scriptExts)) $scriptExts = array('php','sphp');
+		$file = $rsFile;
+		if(empty($file)) $file = Request::$sSCRIPT;
+		if(strpos($file,'http') !== false) return false;
+		$pos = strrpos($file,'.');
+		if($pos === false) return false;
+		$ext = substr($file,$pos+1);
+		$pos = strpos($ext,'?');
+		if($pos !== false) $ext = substr($ext,0,$pos);
+		if(in_array($ext,$scriptExts)) return true;
+		return false;
+	}
+
+/*---------------------------------------------------------------------------*
+ * その他
+ *---------------------------------------------------------------------------*/
+	// セッションIDの取得
+	public static function getSesId($rsDelimiter='&'){
+		$Id = '';
+		$bPC = (self::getDeviceType() == 0);
+		$bCookie = ($_COOKIE['pd'] != '');
+		if((!$bPC)||($bCookie)) $Id = $rsDelimiter.'pd='.session_id();
+		return $Id;
+	}
+}
+?>

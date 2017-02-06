@@ -1,0 +1,149 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      言語設定
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class Locale{
+
+	const TYPE_JA = 1;
+	const TYPE_EN = 2;
+
+	const SUFFIX_JA = 'ja';
+	const SUFFIX_EN = 'en';
+
+	private static $aPaths__ = array();
+	private static $iLocale__ = 1;
+	private static $iSysLocale__ = 1;
+
+	public static function addIncPath($riLocale,$rsPath){
+		self::$aPaths__[$riLocale] = $rsPath;
+	}
+
+	public static function getLocale(){
+		return self::$iLocale__;
+	}
+
+	public static function setLocale($riLocale=0,$rbCookie=false){
+		$locale = $riLocale;
+		if($locale == 0){
+			if(!isset($_COOKIE[C_PR_COOKIE_LOCALE])){
+				$locale = self::getEnvLocale();
+			}else{
+				$locale = intval($_COOKIE[C_PR_COOKIE_LOCALE]);
+			}
+		}
+		if($rbCookie){
+			setcookie(C_PR_COOKIE_LOCALE,$locale,time()+30*24*3600);
+		}
+		self::$iLocale__ = $locale;
+	}
+
+	public static function getEnvLocale(){
+		$langs = explode(',',$_SERVER['HTTP_ACCEPT_LANGUAGE']);
+		$langs = array_reverse($langs);
+		$result = self::TYPE_JA;
+		foreach($langs as $lang){
+			if(preg_match('/^ja/i',$lang)){
+				$result = self::TYPE_JA;
+			}else if(preg_match('/^en/i',$lang)){
+				$result = self::TYPE_EN;
+			}else if(preg_match('/^zh/i',$lang)){
+				$result = self::TYPE_ZH;
+			}
+		}
+		return $result;
+	}
+
+	public static function getMessage(){
+		$msg = '';
+		$argc = func_num_args();
+		if($argc < 1){
+			ELOG(SMSG('PR_E011','argc=0'));
+			return $msg;
+		}
+		$sfx = self::SUFFIX_JA;
+		if(self::$iLocale__ == self::TYPE_EN) $sfx = self::SUFFIX_EN;
+		$args = func_get_args();
+		$msgid = $args[0].'_'.$sfx;
+		if(!defined($msgid)){
+			if(!array_key_exists(self::$iLocale__,self::$aPaths__)){
+				ELOG(SMSG('PR_E003','loc='.self::$iLocale__));
+				return $msg;
+			}
+			$path = self::$aPaths__[self::$iLocale__];
+			if(!is_readable($path)){
+				ELOG(SMSG('PR_E003',$path));
+				return $msg;
+			}
+			require_once($path);
+		}
+		if(!defined($msgid)){
+			ELOG(SMSG('PR_E002',$msgid));
+			return $msg;
+		}
+		$format = constant($msgid);
+		if(count($args) == 1) return $format;
+
+		array_shift($args);
+		array_unshift($args,$format);
+		$msg = call_user_func_array('sprintf',$args);
+
+		if(self::$iLocale__ != self::TYPE_JA){
+			$msg = str_replace('　',' ',$msg);
+			$msg = str_replace('、',',',$msg);
+		}
+		return $msg;
+	}
+
+	public static function setSysLocale($riLocale){
+		$suffix = self::SUFFIX_JA;
+		if($riLocale == self::TYPE_EN) $suffix = self::SUFFIX_EN;
+		$path = C_PR_ROOT.'/cmn/SysMessages_'.$suffix.'.inc';
+		require_once($path);
+		self::$iSysLocale__ = $locale;
+	}
+
+	public static function getSysMessage(){
+		$msg = '';
+		$argc = func_num_args();
+		if($argc < 1){
+			ELOG(SMSG('PR_E011','argc=0'));
+			return $msg;
+		}
+		$sfx = self::SUFFIX_JA;
+		if(self::$iSysLocale__ == self::TYPE_EN) $sfx = self::SUFFIX_EN;
+		$args = func_get_args();
+		$msgid = $args[0].'_'.$sfx;
+		if(!defined($msgid)){
+			ELOG(SMSG('PR_E002',$msgid));
+			return $msg;
+		}
+		$format = constant($msgid);
+		if(count($args) == 1) return $format;
+
+		array_shift($args);
+		array_unshift($args,$format);
+		$msg = call_user_func_array('sprintf',$args);
+
+		if(self::$iLocale__ != self::TYPE_JA){
+			$msg = str_replace('　',' ',$msg);
+			$msg = str_replace('、',',',$msg);
+		}
+		return $msg;
+	}
+}
+
+function OMSG(){
+	$args = func_get_args();
+	$msg = call_user_func_array('\PR\Locale::getMessage',$args);
+	return $msg;
+}
+function SMSG(){
+	$args = func_get_args();
+	$msg = call_user_func_array('\PR\Locale::getSysMessage',$args);
+	return $msg;
+}
+?>

@@ -1,0 +1,177 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      HTMLタグのユーティリティ
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class HTMLTag{
+
+	public static function loadFunc(){
+	}
+
+/*---------------------------------------------------------------------------*
+ * フォーム
+ *---------------------------------------------------------------------------*/
+	public static function getStartFormTag($rsId,$rsTitle,$rsAction,$rbMulti=false){
+		$multi = '';
+		if($rbMulti) $multi = ' enctype="multipart/form-data"';
+		$str  = '<form id="'.$rsId.'"'.$multi.' name="'.$rsId.'" method="post" action="'.$rsAction.'" class="form-search">'."\n";
+		$str .= '<div id="'.$rsId.'_modal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">'."\n";
+		$str .= '<div class="modal-header '.C_PR_PREFIX_STYLE.'modalHeader">'."\n";
+		$str .= '<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>'."\n";
+		$str .= '<h3 id="myModalLabel">'.$rsTitle.'</h3>'."\n";
+		$str .= '</div>'."\n";
+		$str .= '<div class="modal-body '.C_PR_PREFIX_STYLE.'modalBody">'."\n";
+		return $str;
+	}
+
+	public static function getEndFormTag($rsSubmit=null,$rsOk='保存する',$rsCancel='キャンセル',$rsOnClick=null){
+		$submit = $rsSubmit;
+		if(empty($submit)) $submit = C_PR_PREFIX_REQUEST.'submit';
+		$clk = '';
+		if(!empty($rsOnClick)) $clk = ' onClick="javascript:'.$rsOnClick.'"';
+		$str  = '</div>'."\n";
+		$str .= '<div class="modal-footer '.C_PR_PREFIX_STYLE.'modalFooter">'."\n";
+		if($rsOk != 'dfade') $str .= '<input type="submit" id="'.$submit.'" name="'.$submit.'" value="'.$rsOk.'" class="btn btn-primary"'.$clk.'>'."\n";
+		$str .= '<button class="btn" data-dismiss="modal" aria-hidden="true">'.$rsCancel.'</button>'."\n";
+		$str .= '</div>'."\n";
+		$str .= '</div>'."\n";
+		$str .= '</form>'."\n";
+		return $str;
+	}
+
+	public static function getHiddenTag($roBean,$raTag,$rbHasId=false){
+		$var = $raTag->sVariable;
+		$post = $raTag->sPost;
+		$id = '';
+		if($rbHasId) $id = ' id="'.$post.'"';
+		$str = '<input'.$id.' type="hidden" name="'.$post.'" value="'.$roBean->{$var}.'">'."\n";
+		return $str;
+	}
+
+	public static function getInputTag($roBean,$raTag,$rbPasswd=false,$rsClass='span4',$rsPHolder=null){
+		$var = $raTag->sVariable;
+		$post = $raTag->sPost;
+		$type = 'text';
+		if($rbPasswd) $type = 'password';
+		$str = '<input id="'.$post.'" type="'.$type.'" name="'.$post.'" value="'.$roBean->{$var}.'" class="'.$rsClass.'" placeholder="'.$rsPHolder.'">'."\n";
+		return $str;
+	}
+
+	public static function getAreaTag($roBean,$raTag,$rsClass='span4',$rsPHolder=null){
+		$var = $raTag->sVariable;
+		$post = $raTag->sPost;
+		$str = '<textarea id="'.$post.'" name="'.$post.'" class="'.$rsClass.'" rows="3" placeholder="'.$rsPHolder.'">'.$roBean->{$var}.'</textarea>'."\n";
+		return $str;
+	}
+
+	public static function getRadioTag($roBean,$raTag,$raVals,$raAnnos=null,$rsName=null){
+		if(empty($raVals)) return null;
+		$var = $raTag->sVariable;
+		$post = $raTag->sPost;
+		if(!empty($rsName)) $post = $rsName;
+		$str = '';
+		foreach($raVals as $value=>$mName){
+			if(empty($mName)) continue;
+			$str .= '<label class="radio inline"><input type="radio" name="'.$post.'" value="'.$value.'"';
+			$checked = '';
+			if($roBean->{$var} == $value) $checked = ' checked';
+			$name = $mName;
+			if(is_object($mName)) $name = $mName->sName;
+			if(!empty($raAnnos)) $name = '<abbr title="'.$raAnnos[$value].'">'.$name.'</abbr>';
+			$str .= $checked.'> '.$name.'</label>'."\n";
+		}
+		return $str;
+	}
+
+	public static function getCheckTag($roBean,$raTag,$rsText,$rsName=null){
+		$var = $raTag->sVariable;
+		$post = $raTag->sPost;
+		if(!empty($rsName)) $post = $rsName;
+		$str = '<label class="checkbox inline"><input type="checkbox" name="'.$post.'" value="1"';
+		$checked = '';
+		if($roBean->{$var} > 0) $checked = ' checked';
+		$str .= $checked.'> '.$rsText.'</label>'."\n";
+		return $str;
+	}
+
+	public static function getSelectTag($roBean,$raTag,$raVals,$rsClass=null){
+		if(empty($raVals)) return null;
+		$var = $raTag->sVariable;
+		$post = $raTag->sPost;
+		$class = '';
+		if(!empty($rsClass)) $class = ' class="'.$rsClass.'"';
+		$str = '<select id="'.$post.'" name="'.$post.'"'.$class.'>'."\n";
+		foreach($raVals as $value=>$mName){
+			$str .= '<option value="'.$value.'"';
+			$selected = '';
+			if($roBean->{$var} == $value) $selected = ' selected';
+			$name = $mName;
+			if(is_object($mName)){
+				$name = $mName->sName;
+				if(empty($name)) $name = $mName->sTitle;
+			}
+			$str .= $selected.'> '.$name.'</option>'."\n";
+		}
+		$str .= '</select>'."\n";
+		return $str;
+	}
+
+/*---------------------------------------------------------------------------*
+ * 文字列操作
+ *---------------------------------------------------------------------------*/
+	public static function getSafeTag($rmVar,$riType=0,$rsNoneStr=null,$rbNoBr=false){
+		$noneStr = $rsNoneStr;
+		if($noneStr == null) $noneStr = '- 入力がありません -';
+		$html = $rmVar;
+		if(empty($rmVar)){
+			$html = '<div class="muted textCenter">'.$noneStr.'</div>';
+		}else{
+			switch($riType){
+			  case EModel::PASSWORD:
+				$len = mb_strlen($rmVar);
+				$html = '';
+				for($i=0; $i<$len; $i++) $html .= '*';
+				break;
+
+			  case EModel::DATE:
+				$html = date('Y/m/d',$rmVar);
+				break;
+
+			  default:
+				if(!is_numeric($rmVar)){
+					$rmVar = Misc::trim($rmVar);
+					$html = htmlspecialchars($rmVar);
+					if(!$rbNoBr) $html = nl2br($html);
+				}
+			}
+		}
+		return $html;
+	}
+
+/*---------------------------------------------------------------------------*
+ * 文字列操作
+ *---------------------------------------------------------------------------*/
+	public static function getMailTag($rsBody){
+		$html = '<div style="padding:10px; background-color:aliceblue;">'.nl2br(htmlspecialchars($rsBody)).'</div>'."\n";
+		return $html;
+	}
+}
+
+function HIDETAG($roContainer,$rsTitle,$rbHasId=false){
+	return HTMLTag::getHiddenTag($roContainer->getEntity(),$roContainer->getNameTag($rsTitle),$rbHasId);
+}
+function INPTAG($roContainer,$rsTitle,$rbPasswd=false,$rsClass='span4',$rsPHolder=null){
+	return HTMLTag::getInputTag($roContainer->getEntity(),$roContainer->getNameTag($rsTitle),$rbPasswd,$rsClass,$rsPHolder);
+}
+function RADTAG($roContainer,$rsTitle,$raAnnos=null,$rsName=null){
+	$var = 'aStrs_'.$rsTitle;
+	$entity = $roContainer->getEntity();
+	return HTMLTag::getRadioTag($entity,$roContainer->getNameTag($rsTitle),$roContainer->{$var},$raAnnos,$rsName);
+}
+function SAFETAG($rmVar,$riType=0,$rsNoneStr=null,$rbNoBr=false){
+	return HTMLTag::getSafeTag($rmVar,$riType,$rsNoneStr,$rbNoBr);
+}
+?>

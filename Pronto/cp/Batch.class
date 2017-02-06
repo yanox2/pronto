@@ -1,0 +1,107 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Abstract class - Batch
+ *      バッチ基底クラス
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+abstract class Batch implements Task{
+
+	private $aOptions_ = array();
+	private $sOptStr_ = null;
+	private $aLongOpts_ = null;
+	private $sUsage_ = 'usage: command -i inFile -o outFile [-v]';
+
+	private $aDenySys_ = null;
+	private $oDate_ = null;
+
+	private $sName_ = null;
+	private $bDao_ = false;
+	private $bTran_ = false;
+	private $bCommit_ = false;
+
+/*---------------------------------------------------------------------------*
+ * Abstract Methods
+ *---------------------------------------------------------------------------*/
+	abstract public function action();
+
+/*---------------------------------------------------------------------------*
+ * Set Parameters
+ *---------------------------------------------------------------------------*/
+	public function setOpt($rsOptStr,$raLongOpts=null){
+		$this->sOptStr_ = $rsOptStr;
+		$this->aLongOpts_ = $raLongOpts;
+	}
+
+	public function setUsage($rsUsage){
+		$this->sUsage_ = $rsUsage;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Implement Methods
+ *---------------------------------------------------------------------------*/
+	public function setDenySys($raDenySys){
+		$this->aDenySys_ = $raDenySys;
+	}
+
+	public function getUsage(){
+		return $this->sUsage_;
+	}
+
+	public function getName(){
+		return $this->sName_;
+	}
+
+	public function hasDao(){
+		return $this->bDao_;
+	}
+
+	public function hasTran(){
+		return $this->bTran_;
+	}
+
+	public function hasCommit(){
+		return $this->bCommit_;
+	}
+
+	public function init($roDate){
+		$this->oDate_ = $roDate;
+		return true;
+	}
+
+	public function checkOptions(){
+		if((empty($this->sOptStr_))&&(empty($this->aLongOpts_))) return true;
+		$rc = getopt($this->sOptStr_,$this->aLongOpts_);
+		if($rc ===false) return false;
+		$this->aOptions_ = $rc;
+		return true;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Protected Methods
+ *---------------------------------------------------------------------------*/
+	protected function setName($rsName){
+		$this->sName_ = $rsName;
+	}
+
+	protected function setDao($rbDao=false,$rbTran=false){
+		$this->bDao_ = $rbDao;
+		$this->bTran_ = $rbTran;
+	}
+
+	protected function getOpt(){
+		return $this->aOptions_;
+	}
+
+	protected function commitEnd(){
+		$this->bCommit_ = true;
+	}
+
+	protected function errorOccurred($riCode,$rsMessage){
+		//throw new Exception($riCode,$rsMessage);
+		$str = $this->sPhese_.':'.$rsMessage.' rc='.$riCode;
+		Trace::out($str,1);
+	}
+}
+?>

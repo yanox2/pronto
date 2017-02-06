@@ -1,0 +1,294 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class - I/O
+ *      ファイラー
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class Filer{
+
+	const NUMERIC = 1;
+	const STRING = 2;
+
+	private $oInFp_ = null;
+	private $oOutFp_ = null;
+	private $sInFile_ = null;
+	private $sOutFile_ = null;
+
+	private $sFromEnc_ = 'UTF-8,eucJP-win,EUC-JP,SJIS-win,SJIS';
+	//private $sFromEnc_ = 'SJIS,SJIS-win,EUC-JP';
+	private $sToEnc_ = 'SJIS-win';
+
+	public function __construct($rsPath=null,$rsEncode='UTF-8,eucJP-win,EUC-JP,SJIS-win,SJIS'){
+		$this->sInFile_ = $rsPath;
+		$this->sFromEnc_ = $rsEncode;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Set Parameters
+ *---------------------------------------------------------------------------*/
+	public function setInFile($rsPath,$rsEncode='UTF-8,eucJP-win,EUC-JP,SJIS-win,SJIS'){
+		$this->sInFile_ = $rsPath;
+		$this->sFromEnc_ = $rsEncode;
+	}
+
+	public function setOutFile($rsPath,$rsEncode='SJIS-win'){
+		$this->sOutFile_ = $rsPath;
+		$this->sToEnc_ = $rsEncode;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Public Methods
+ *---------------------------------------------------------------------------*/
+	public function openFile(){
+		$inout = ($this->sInFile_ == $this->sOutFile_);
+		if(!empty($this->sInFile_)){
+			$opt = 'r';
+			if($inout) $opt = 'rw';
+			$fp = fopen($this->sInFile_,$opt);
+			if(($fp === false)||($fp === null)){
+				$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fopen',$this->sInFile_));
+				return $rc;
+			}
+			$this->oInFp_ = $fp;
+		}
+		if($inout) return 0;
+
+		if(!empty($this->sOutFile_)){
+			$fp = fopen($this->sOutFile_,'w');
+			if($fp === false){
+				$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fopen',$this->sOutFile_));
+				return $rc;
+			}
+			$this->oOutFp_ = $fp;
+		}
+		return 0;
+	}
+
+	public function closeFile(){
+		if(!empty($this->oInFp_)) fclose($this->oInFp_);
+		if(!empty($this->oOutFp_)) fclose($this->oOutFp_);
+	}
+
+	public function getLine($rbNoTrim=false){
+		$str = fgets($this->oInFp_,1024);
+		if($str === false) return null;
+		$line = mb_convert_encoding($str,'UTF-8',$this->sFromEnc_);
+		if(!$rbNoTrim) $line = Misc::trim($line);
+		return $line;
+	}
+
+	public function getLineCSV(){
+		$data = $this->fgetCSV($this->oInFp_,1024);
+		if($data === false) return null;
+		mb_convert_variables('UTF-8',$this->sFromEnc_,$data);
+		return $data;
+	}
+
+	public function checkLine($rsLine,$rbComment=false){
+		if(($rsLine == "\r\n")||($rsLine == "\r")||($rsLine == "\n")
+			||(empty($rsLine))||($rsLine == " ")||($rsLine == "　")) return false;
+		if($rbComment){
+			$chr = mb_substr($rsLine,0,1);
+			if(($chr == '#')||($chr == '＃')) return false;
+		}
+		return true;
+	}
+
+	public function getEncode($rsStr){
+		// 順番が重要。UTF-8はSJISを網羅している。
+		$sEnc = null;
+		if(mb_check_encoding($rsStr,'SJIS-win')){
+			$sEnc = 'SJIS-win';
+		}else if(mb_check_encoding($rsStr,'SJIS')){
+			$sEnc = 'SJIS';
+		}else if(mb_check_encoding($rsStr,'eucJP-win')){
+			$sEnc = 'eucJP-win';
+		}else if(mb_check_encoding($rsStr,'EUC-JP')){
+			$sEnc = 'EUC-JP';
+		}else if(mb_check_encoding($rsStr,'UTF-8')){
+			$sEnc = 'UTF-8';
+		}
+		return $sEnc;
+	}
+
+	public function writeFile($rsText,$rbRet=false){
+		if($rbRet) $rsText .= "\r\n";
+		$fp = $this->oOutFp_;
+		if($this->sInFile_ == $this->sOutFile_) $fp = $this->oInFp_;
+		$rc = fwrite($fp,mb_convert_encoding($rsText,$this->sToEnc_,$this->sFromEnc_));
+		if($rc === false){
+			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fwrite',$this->sOutFile_));
+			return $rc;
+		}
+		return 0;
+	}
+
+	public function substr($rsStr,$rsStartStr=null,$rsEndStr=null){
+		$str = mb_strtolower($rsStr);
+		$start = mb_strtolower($rsStartStr);
+		$end = mb_strtolower($rsEndStr);
+		$len = mb_strlen($str);
+		$spos = 0;
+		$epos = 0;
+		if(!empty($start)){
+			$spos = mb_strpos($str,$start);
+			if($spos === false) return null;
+			$spos += mb_strlen($start);
+		}
+		if(!empty($end)){
+			$epos = mb_strpos($str,$end);
+			if($epos === false) return null;
+		}
+		$res = null;
+		if(($spos)&&($epos)){
+			$res = mb_substr($rsStr,$spos,$epos-$spos);
+		}else if($spos){
+			$res = mb_substr($rsStr,$spos);
+		}else if($epos){
+			$res = mb_substr($rsStr,0,$epos);
+		}
+		return Misc::trim($res);
+	}
+
+	public function fgetCSV(&$handle,$length=null,$d=',',$e='"'){
+		$d = preg_quote($d);
+		$e = preg_quote($e);
+		$_line = "";
+		while(($eof != true)and(!feof($handle))){
+			$_line .= (empty($length) ? fgets($handle) : fgets($handle, $length));
+			$itemcnt = preg_match_all('/'.$e.'/', $_line, $dummy);
+			if($itemcnt % 2 == 0) $eof = true;
+		}
+		$_csv_line = preg_replace('/(?:\\r\\n|[\\r\\n])?$/', $d, trim($_line));
+		$_csv_pattern = '/('.$e.'[^'.$e.']*(?:'.$e.$e.'[^'.$e.']*)*'.$e.'|[^'.$d.']*)'.$d.'/';
+		preg_match_all($_csv_pattern, $_csv_line, $_csv_matches);
+		$_csv_data = $_csv_matches[1];
+		for($_csv_i=0;$_csv_i<count($_csv_data);$_csv_i++){
+			$_csv_data[$_csv_i]=preg_replace('/^'.$e.'(.*)'.$e.'$/s','$1',$_csv_data[$_csv_i]);
+			$_csv_data[$_csv_i]=str_replace($e.$e, $e, $_csv_data[$_csv_i]);
+		}
+		return empty($_line) ? false : $_csv_data;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Utility
+ *---------------------------------------------------------------------------*/
+	// 拡張子の取得
+	public static function getFileExt($rsPath){
+		$pos = strrpos($rsPath,'.');
+		if($pos === false) return null;
+		$ext = substr($rsPath,$pos+1);
+		return $ext;
+	}
+
+	// ファイル情報
+	public static function fileStat($rsFile){
+		if(!is_readable($rsFile)){
+			self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsFile));
+			return null;
+		}
+		$stat = stat($rsFile);
+		if(!$stat){
+			self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','stat',$rsFile));
+			return null;
+		}
+
+		$date = date("Y/m/d H:i:s",$stat['mtime']);
+		$size = ceil($stat['size'] / 1024);
+
+		$stat['pr_date'] = $date;
+		$stat['pr_size'] = $size;
+		return $stat;
+	}
+
+	// ファイルの削除
+	public static function removeFile($rsFile){
+		if(!file_exists($rsFile)) return 0;
+		$rc = unlink($rsFile);
+		if($rc === false){
+			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','unlink',$rsFile));
+			return $rc;
+		}
+		return 0;
+	}
+
+	// ディレクトリの削除
+	public static function removePath($rsPath){
+		if(!is_dir($rsPath)){
+			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E016',$rsPath));
+			return $rc;
+		}
+		$files = glob($rsPath.'/*');
+		if(!empty($files)){
+			foreach($files as $file){
+				self::removeFile($file);
+			}
+		}
+		$rc = rmdir($rsPath);
+		if($rc === false){
+			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','rmdir',$rsPath));
+			return $rc;
+		}
+		return 0;
+	}
+
+	public static function upload($rsPostName,$rsFile,$riMaxSize=2,$rbCSV=false){
+		$postFile = $_FILES[$rsPostName]['name'];
+		$tmpFile = $_FILES[$rsPostName]['tmp_name'];
+		$size = $_FILES[$rsPostName]['size'];
+		$error = $_FILES[$rsPostName]['error'];
+
+		$msg = '';
+		if($size == 0){
+			$msg = 'CSVファイルを選択してください。';
+		}else if($size > $riMaxSize*1048576){
+			$msg = 'CSVファイルが大きすぎます。'.$riMaxSize.'Mbyte 以内にしてください。';
+		}
+		if((empty($msg))&&($rbCSV)){
+			$ext = self::getFileExt($postFile);
+			$ext = strtolower($ext);
+			if($ext != 'csv'){
+				$msg = 'ファイルの拡張子に誤りがあります。読み込むファイルの拡張子は、.csvを指定してください。'."\n";
+				$msg .= '（通常、CSV形式のファイルは拡張子が.csvになります）';
+			}
+		}
+		if(!empty($msg)) return $msg;
+
+		$upFile = $_FILES[$rsPostName]['tmp_name'];
+		$rc = move_uploaded_file($upFile,$rsFile);
+		if($rc === false){
+			$msg = 'ファイルのアップロードに失敗しました。時間をおいて、再度実行してください。';
+		}
+		return $msg;
+	}
+
+	// ファイルのダウンロード
+	public static function download($rsPath){
+		if(!is_readable($rsPath)){
+			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsPath));
+			return $rc;
+		}
+		session_cache_limiter("private_no_expire");
+
+		$size = filesize($rsPath);
+		if($size == 0) return C_PR_ERR_ENOENT;
+
+		$path = mb_convert_encoding($rsPath,'SJIS','UTF-8');
+		header("Content-Disposition: attachment; filename=\"".basename($path)."\"");
+		header("Content-Length: ".$size);
+		header("Content-Type: application/octet-stream");
+		readfile($path);
+	}
+
+/*---------------------------------------------------------------------------*
+ * Protected Methods
+ *---------------------------------------------------------------------------*/
+	protected static function errorOccurred($riCode,$rsMessage){
+		//throw new Exception($riCode,$rsMessage);
+		ELOG($rsMessage);
+		return $riCode;
+	}
+}
+?>

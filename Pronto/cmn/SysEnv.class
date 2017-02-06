@@ -1,0 +1,275 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      システム情報
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+final class SysEnv{
+
+	private static $bREADONLY__ = false;
+	private static $sVERSION__ = '1.12';
+
+	private static $sROOT__ = null;
+	private static $sTABLE_PATH__ = null;
+	private static $iSYSLOCALE__ = 0;
+
+	private static $iSUBSYS_MODE__ = null;
+	private static $sSUBSYS_MAINDOMAIN__ = null;
+	private static $sSUBSYS_URIROOT__ = null;
+
+	private static $sYOUR_VERSION__ = null;
+	private static $sYOUR_DINDEX__ = null;
+	private static $sYOUR_DOCROOT__ = null;
+	private static $sYOUR_DISPROOT__ = null;
+	private static $sYOUR_ENTITYFILE_PATH__ = null;
+
+	private static $iMAINTE_MODE__ = 0;
+	private static $sMAINTE_PATH__ = null;
+
+	private static $iTRACE_LEVEL__ = 0;
+	private static $sTRACE_PATH__ = null;
+
+	private static $sDAO_NAME__ = null;
+
+/*---------------------------------------------------------------------------*
+ * Public Methods
+ *---------------------------------------------------------------------------*/
+	public static function readOnly(){
+		self::$bREADONLY__ = true;
+	}
+
+	public static function getVersion(){
+		return self::$sVERSION__;
+	}
+
+	public static function setenv(){
+		self::$sROOT__ = C_PR_ROOT;
+		self::$iSYSLOCALE__ = C_PR_SYSLOCALE;
+		self::$iSUBSYS_MODE__ = C_PR_SUBSYS_MODE;
+		self::$sSUBSYS_MAINDOMAIN__ = C_PR_SUBSYS_MAINDOMAIN;
+		self::$sSUBSYS_URIROOT__ = '/'.HTTPUtil::formatURL(C_PR_SUBSYS_URIROOT);
+		self::$sYOUR_VERSION__ = C_PR_YOUR_VERSION;
+		self::$sYOUR_DINDEX__ = C_PR_YOUR_DIRECTORYINDEX;
+		self::$sYOUR_DOCROOT__ = '/'.HTTPUtil::formatURL(C_PR_YOUR_DOCROOT);
+		self::$sYOUR_DISPROOT__ = '/'.HTTPUtil::formatURL(C_PR_YOUR_DISPROOT);
+		self::$sYOUR_ENTITYFILE_PATH__ = '/'.HTTPUtil::formatURL(C_PR_YOUR_ENTITYFILE_PATH);
+		self::$iMAINTE_MODE__ = C_PR_MAINTE_MODE;
+		self::$sMAINTE_PATH__ = '/'.HTTPUtil::formatURL(C_PR_MAINTE_PATH);
+		self::$iTRACE_LEVEL__ = C_PR_TRACE_LEVEL;
+		self::$sTRACE_PATH__ = '/'.HTTPUtil::formatURL(C_PR_TRACE_PATH);
+		self::$sDAO_NAME__ = C_PR_DAO_NAME;
+	}
+
+	public static function getRoot(){
+		return self::$sROOT__;
+	}
+
+	public static function setRoot($rsRoot){
+		// 以下のクラスはすでに読み込まれている
+		// Trace,Locale,ClassLoader,SysEnv,Request,HTTPUtil,Misc,Dispatcher
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sROOT'));return; }
+		self::$sROOT__ = $rsRoot;
+		$loader = ClassLoader::getInstance();
+		$loader->setSysRoot($rsRoot);
+	}
+
+	public static function getSysLocale(){
+		return self::$iSYSLOCALE__;
+	}
+
+	public static function setSysLocale($riSysLocale){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$iSYSLOCALE'));return; }
+		self::$iSYSLOCALE__ = $riSysLocale;
+		Locale::setSysLocale($riSysLocale);
+	}
+
+	public static function getSubSysMode(){
+		return self::$iSUBSYS_MODE__;
+	}
+
+	public static function setSubSysMode($riMode){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$iSUBSYS_MODE'));return; }
+		self::$iSUBSYS_MODE__ = $riMode;
+		Request::setSubSystem();
+	}
+
+	public static function getSubSysMainDomain(){
+		return self::$sSUBSYS_MAINDOMAIN__;
+	}
+
+	public static function setSubSysMainDomain($rsDomain){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sSUBSYS_MAINDOMAIN'));return; }
+		self::$sSUBSYS_MAINDOMAIN__ = $rsDomain;
+		Request::setSubSystem();
+	}
+
+	public static function getSubSysURIRoot(){
+		return self::$sSUBSYS_URIROOT__;
+	}
+
+	public static function setSubSysURIRoot($rsURIRoot){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sSUBSYS_URIROOT'));return; }
+		self::$sSUBSYS_URIROOT__ = '/'.HTTPUtil::formatURL($rsURIRoot);
+		Request::setSubSystem();
+	}
+
+	public static function getYourVersion(){
+		return self::$sYOUR_VERSION__;
+	}
+
+	public static function setYourVersion($rsVersion){
+		self::$sYOUR_VERSION__ = $rsVersion;
+	}
+
+	public static function getYourDIndex(){
+		return self::$sYOUR_DINDEX__ = C_PR_YOUR_DIRECTORYINDEX;
+	}
+
+	public static function setYourDIndex($rsDIndex){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sYOUR_DINDEX'));return; }
+		self::$sYOUR_DINDEX__ = $rsDIndex;
+		Request::generate(self::$sYOUR_DINDEX__);
+	}
+
+	public static function getYourDocRoot(){
+		return self::$sYOUR_DOCROOT__;
+	}
+
+	public static function setYourDocRoot($rsDocRoot){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sYOUR_DOCROOT'));return; }
+		self::$sYOUR_DOCROOT__ = '/'.HTTPUtil::formatURL($rsDocRoot);
+		Request::generate();
+	}
+
+	public static function getYourDispRoot(){
+		return self::$sYOUR_DISPROOT__;
+	}
+
+	public static function setYourDispRoot($rsDispRoot){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sYOUR_DISPROOT'));return; }
+		$root = '/'.HTTPUtil::formatURL($rsDispRoot);
+		if(empty($root)){
+			ELOG(SMSG('PR_E006',$root));
+			return;
+		}else if(!file_exists($root)){
+			ELOG(SMSG('PR_E006',$root));
+			return;
+		}
+		self::$sYOUR_DISPROOT__ = '/'.HTTPUtil::formatURL($rsDispRoot);
+		$loader = ClassLoader::getInstance();
+		$loader->setYourDispRoot(self::$sYOUR_DISPROOT__);
+	}
+
+	public static function getYourEntityFilePath(){
+		return self::$sYOUR_ENTITYFILE_PATH__;
+	}
+
+	public static function setYourEntityFilePath($rsPath){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sYOUR_ENTITYFILE_PATH'));return; }
+		$path = '/'.HTTPUtil::formatURL($rsPath);
+		if(empty($path)){
+			ELOG(SMSG('PR_E006',$path));
+			return;
+		}else if(!file_exists($path)){
+			ELOG(SMSG('PR_E006',$path));
+			return;
+		}
+		self::$sYOUR_ENTITYFILE_PATH__ = '/'.HTTPUtil::formatURL($rsPath);
+	}
+
+	public static function getMainteMode(){
+		return self::$iMAINTE_MODE__;
+	}
+
+	public static function setMainteMode($riMode){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$iMAINTE_MODE'));return; }
+		self::$iMAINTE_MODE__ = $riMode;
+		if($riMode == 2){
+			require(self::$sMAINTE_PATH__);
+			exit();
+		}
+	}
+
+	public static function getMaintePath(){
+		return self::$sMAINTE_PATH__;
+	}
+
+	public static function setMaintePath($rsPath){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sMAINTE_PATH'));return; }
+		self::$sMAINTE_PATH__ = '/'.HTTPUtil::formatURL($rsPath);
+	}
+
+	public static function getTraceLevel(){
+		return self::$iTRACE_LEVEL__;
+	}
+
+	public static function setTraceLevel($riLevel){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$iTRACE_LEVEL'));return; }
+		self::$iTRACE_LEVEL__ = $riLevel;
+		Trace::setLevel($riLevel);
+	}
+
+	public static function getTracePath(){
+		return self::$sTRACE_PATH__;
+	}
+
+	public static function setTracePath($rsPath){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sTRACE_PATH'));return; }
+		self::$sTRACE_PATH__ = '/'.HTTPUtil::formatURL($rsPath);
+	}
+
+	public static function getDaoName(){
+		return self::$sDAO_NAME__;
+	}
+
+	public static function setDaoName($rsName){
+		if(self::$bREADONLY__){ ELOG(SMSG('PR_E004','$sDAO_NAME'));return; }
+		self::$sDAO_NAME__ = $rsName;
+	}
+
+	public static function toString(){
+		$str  = 'version='.self::$sVERSION__;
+		$str .= ' pronto path='.self::$sROOT__;
+		$str .= ' system locale='.self::$iSYSLOCALE__;
+		$str .= ' mode of sub system='.self::$iSUBSYS_MODE__;
+		$str .= ' main domain of sub system='.self::$sSUBSYS_MAINDOMAIN__;
+		$str .= ' uri root of sub system='.self::$sSUBSYS_URIROOT__;
+		$str .= ' your version='.self::$sYOUR_VERSION__;
+		$str .= ' your directory index='.self::$sYOUR_DINDEX__;
+		$str .= ' your public_html dir='.self::$sYOUR_DOCROOT__;
+		$str .= ' dispatching your file root path='.self::$sYOUR_DISPROOT__;
+		$str .= ' entity file path='.self::$sYOUR_ENTITYFILE_PATH__;
+		$str .= ' mainte mode='.self::$iMAINTE_MODE__;
+		$str .= ' mainte html path='.self::$sMAINTE_PATH__;
+		$str .= ' trace level='.self::$iTRACE_LEVEL__;
+		$str .= ' trace file path='.self::$sTRACE_PATH__;
+		$str .= ' dao name='.self::$sDAO_NAME__;
+		return $str;
+	}
+
+	public static function println($riMode=0){
+		$str  = '<table>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">version</td><td>'.self::$sVERSION__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">pronto path</td><td>'.self::$sROOT__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">system locale</td><td>'.self::$iSYSLOCALE__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">mode of sub system</td><td>'.self::$iSUBSYS_MODE__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">main domain of sub system</td><td>'.self::$sSUBSYS_MAINDOMAIN__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">uri root of sub system</td><td>'.self::$sSUBSYS_URIROOT__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">your version</td><td>'.self::$sYOUR_VERSION__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">your directory index</td><td>'.self::$sYOUR_DINDEX__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">your public_html dir</td><td>'.self::$sYOUR_DOCROOT__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">dispatching your file root path</td><td>'.self::$sYOUR_DISPROOT__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">entity file path</td><td>'.self::$sYOUR_ENTITYFILE_PATH__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">mainte mode</td><td>'.self::$iMAINTE_MODE__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">mainte html path</td><td>'.self::$sMAINTE_PATH__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">trace level</td><td>'.self::$iTRACE_LEVEL__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">trace file path</td><td>'.self::$sTRACE_PATH__.'</td></tr>'."\n";
+		$str .= '<tr><td style="font-weight:bold;">dao name</td><td>'.self::$sDAO_NAME__.'</td></tr>'."\n";
+		$str .= '</table>'."\n";
+		print $str;
+		//Trace::trace($riMode,$str,1);
+	}
+}
+?>

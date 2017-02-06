@@ -1,0 +1,155 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      デバッグトレース
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class Trace{
+
+	const PREFIX = 'TRC';
+	private static $iLevel__ = 0;
+	private static $sPath__ = null;
+	private static $aAcceptIPs__ = array();
+	private static $aSeps__ = array('','<br>','',"\n");
+
+	public static function init(){
+		self::$iLevel__ = C_PR_TRACE_LEVEL;
+		self::$sPath__ = C_PR_TRACE_PATH;
+	}
+
+	public static function setLevel($riLevel,$rsPath=null){
+		self::$iLevel__ = $riLevel;
+		if(!empty($rsPath)) self::$sPath__ = $rsPath; 
+	}
+
+	public static function addAcceptIP($rsIP){
+		self::$aAcceptIPs__[] = $rsIP;
+	}
+
+	public static function toStringBTrace($rsSep='<br>'){
+		$dbtc = debug_backtrace();
+		$trcs = null;
+		foreach($dbtc as $dbgs){
+			if((array_key_exists('function',$dbgs))&&(strpos($dbgs['function'],'PR\\ELOG') !== false)) continue;
+			if((array_key_exists('class',$dbgs))&&(strpos($dbgs['class'],'PR\\Trace') !== false)) continue;
+			if((array_key_exists('class',$dbgs))&&(strpos($dbgs['class'],'PR\\Exception') !== false)) continue;
+			$trcs = $dbgs;
+			break;
+		}
+		if($trcs == null) return '';
+		$str = '';
+		if(array_key_exists('file',$trcs)) $str .= ':'.$trcs['file'];
+		if(array_key_exists('line',$trcs)) $str .= ':'.$trcs['line'];
+		if(array_key_exists('class',$trcs)) $str .= ':'.$trcs['class'];
+		if(array_key_exists('function',$trcs)) $str .= ':'.$trcs['function'];
+		return $str;
+	}
+
+	public static function toStringObj($rmObj,$rsSep='<br>'){
+		$str = '';
+		if(is_numeric($rmObj)){
+			$str = strval($rmObj);
+		}else if(is_string($rmObj)){
+			$str = $rmObj;
+		}else if(is_array($rmObj)){
+			foreach($rmObj as $obj){
+				$str .= var_export($obj,true);
+			}
+		}
+		return $str;
+	}
+
+	public static function toStringSQL($rsSep='<br>'){
+		$str = '';
+		$oDao = DaoFactory::create();
+		$sqls = $oDao::getSQLHistory();
+		if(count($sqls) > 0){
+			foreach($sqls as $sql){
+				$str .= $sql.$rsSep;
+			}
+		}
+		return $str;
+	}
+
+	public static function log($riMode,$rmObj,$rbSql=false){
+		if(self::$iLevel__ == 0) return;
+		$sep = self::$aSeps__[self::$iLevel__];
+		$str = self::toStringObj($rmObj,$sep);
+		$str .= $sep.self::toStringBTrace($sep);
+		if($rbSql) $str .= $sep.self::toStringSQL($sep);
+		if($riMode == 0){
+			self::out($str);
+		}else{
+			self::outAjax($str);
+		}
+	}
+
+	public static function trace($riMode,$rmObj,$riLevel=-1,$rbSql=false,$bEnd=false){
+		if((!empty(self::$aAcceptIPs__))&&(!in_array(Request::$sIPADDR,self::$aAcceptIPs__))) return;
+		$level = $riLevel;
+		if($level == -1) $level = self::$iLevel__;
+		if($level == 0) return;
+		$sep = self::$aSeps__[$level];
+		$str = self::toStringObj($rmObj,$sep);
+		if($rbSql) $str .= $sep.self::toStringSQL($sep);
+		if($riMode == 0){
+			self::out($str,$riLevel);
+		}else{
+			self::outAjax($str);
+		}
+		if($rbEnd) exit();
+	}
+
+	public static function out($rsMessage,$riLevel=-1){
+		$cli = (php_sapi_name() == 'cli');
+		$level = $riLevel;
+		if($level == -1) $level = self::$iLevel__;
+		if($level == 0) return;
+		$sep = self::$aSeps__[$level];
+		if($cli) $sep = "\n";
+		$str = self::PREFIX;
+		if($level != 2) $str .= ':'.date('Y/m/d/H:i:s',time());
+		if(!$cli) $str .= ':('.$_SERVER['REMOTE_ADDR'].')';
+		$str .= ":".$sep.$rsMessage.$sep;
+		if($level == 0){ // 出力なし
+		}else if($level == 1){ // 標準出力
+			if(php_sapi_name() == 'cli'){
+				print $str;
+			}else{
+				print '<div style="background-color:lightpink;">'.$str.'</div>';
+			}
+		}else if($level == 2){ // エラーログ出力
+			error_log($str);
+		}else if($level == 3){ // ファイル出力
+			$fp = fopen(self::$sPath,'a');
+			fputs($fp,$str);
+			fclose($fp);
+		}
+	}
+
+	public static function outAjax($rsMessage){
+		if(self::$iLevel__ == 0) return;
+		$raRes = array('rcode'=>-1,'message'=>urlencode($rsMessage));
+		$str  = $_GET['jcbk'].'(';
+		$str .= json_encode($raRes,JSON_UNESCAPED_UNICODE).')';
+		header('Content-Type: application/json');
+		print $str;
+	}
+}
+
+function ELOG($rmObj,$rbSql=false){
+	\PR\Trace::log(0,$rmObj,$rbSql);
+}
+function ELOGA($rmObj,$rbSql=false){
+	\PR\Trace::log(1,$rmObj,$rbSql);
+}
+function TRC($rmObj,$riLevel=-1,$rbSql=false,$bEnd=false){
+	\PR\Trace::trace(0,$rmObj,$riLevel,$rbSql,$rbEnd);
+}
+function TRCA($rmObj,$riLevel=-1,$raDbg=null,$rbSql=false,$bEnd=false){
+	\PR\Trace::trace(1,$rmObj,$riLevel,$rbSql,$rbEnd);
+}
+
+?>

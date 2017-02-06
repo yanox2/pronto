@@ -1,0 +1,90 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      検索部品
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class Searcher{
+
+	const PREFIX = 'prSrch_';
+
+	private $sKeywords_ = null;
+	private $aColumns_ = null;
+	private $aItems_ = array();
+
+	public function __construct($raColumns=null){
+		$this->aColumns_ = $raColumns;
+	}
+
+	public function addItem($roNameTag){
+		$this->aItems_[$roNameTag->sVariable] = $roNameTag;
+	}
+
+	public function getKeywords(){
+		return $this->sKeywords_;
+	}
+
+	public function setKeywords($sKeywords){
+		$this->sKeywords_ = $sKeywords;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Public Methods
+ *---------------------------------------------------------------------------*/
+	public function setDefaultItem($rsVar,$rmVal){
+		$_SESSION[self::PREFIX.$rsVar] = $rmVal;
+	}
+
+	public function load(){
+		if(isset($_GET['kw'])){
+			$this->sKeywords_ = Misc::trim(urldecode($_GET['kw']));
+		}else if(isset($_POST[self::PREFIX.'Keywords'])){
+			$this->sKeywords_ = Misc::trim($_POST[self::PREFIX.'Keywords']);
+		}else{
+			$this->sKeywords_ = Misc::trim($_SESSION[self::PREFIX.'Keywords']);
+		}
+		if(empty($this->aItems_)) return;
+		foreach($this->aItems_ as $var=>$tag){
+			if(isset($_GET[$tag->sPost])){
+				$this->{$var} = Misc::trim(urldecode($_GET[$tag->sPost]));
+			}else if(isset($_POST[$tag->sPost])){
+				$this->{$var} = Misc::trim($_POST[$tag->sPost]);
+			}else{
+				$this->{$var} = Misc::trim($_SESSION[self::PREFIX.$var]);
+			}
+		}
+	}
+
+	public function save(){
+		$_SESSION[self::PREFIX.'Keywords'] = $this->sKeywords_;
+		if(empty($this->aItems_)) return;
+		foreach($this->aItems_ as $var=>$tag){
+			$_SESSION[self::PREFIX.$var] = $this->{$var};
+		}
+	}
+
+	public function clear(){
+		unset($_SESSION[self::PREFIX.'Keywords']);
+		if(empty($this->aItems_)) return;
+		foreach($this->aItems_ as $var=>$tag){
+			unset($_SESSION[self::PREFIX.$var]);
+		}
+	}
+
+	public function getSqlToken($rbCountOnly=false){
+		$cols = array();
+		if(!empty($this->aItems_)){
+			foreach($this->aItems_ as $var=>$tag){
+				if(!empty($this->{$var})) $cols[$tag->sColumn] = $this->{$var};
+			}
+		}
+		$token = null;
+		if(!empty($this->sKeywords_)){
+			$token = Dao::getTokenKeywords($this->sKeywords,$cols);
+		}
+		return $token;
+	}
+}
+?>

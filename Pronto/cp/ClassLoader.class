@@ -1,0 +1,114 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class
+ *      クラスローダー
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class ClassLoader{
+
+	const NAME_NONE = 'none';
+
+	private static $oIns__ = null;
+	private $sSysRoot_ = null;
+	private $aSysSubDirs_ = array('apl','cmn','cp','mvc','util');
+	private $sYourDispRoot_ = null;
+
+	private $aPaths_ = array();
+
+	private function __construct(){
+	}
+
+ 	public final function __clone(){
+	}
+
+/*---------------------------------------------------------------------------*
+ * Public Methods
+ *---------------------------------------------------------------------------*/
+	public static function getInstance(){
+		if(!isset(self::$oIns__)){
+			$class = __CLASS__;
+			self::$oIns__ = new $class;
+			spl_autoload_register(array(self::$oIns__,'loader'));
+		}
+		return self::$oIns__;
+	}
+
+	public function setPaths($raPaths,$rsNameSpace=null){
+		if(empty($rsNameSpace)) $rsNameSpace = self::NAME_NONE;
+		$this->aPaths_[$rsNameSpace] = $raPaths;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Loader
+ *---------------------------------------------------------------------------*/
+	public function setSysRoot($rsRoot){
+		$this->sSysRoot_ = $rsRoot;
+	}
+
+	public function setYourDispRoot($rsRoot){
+		$this->sYourDispRoot_ = $rsRoot;
+	}
+
+	public function loader($rsClassName){
+		if(empty($this->sSysRoot_)){
+			ELOG(SMSG('PR_E001',$rsClassName));
+			return;
+		}
+		$names = explode('\\',$rsClassName);
+		$num = count($names);
+		if($num == 1){
+			$ns = self::NAME_NONE;
+			$class = $names[0];
+		}else if($num == 2){
+			$ns = $names[0];
+			$class = $names[1];
+		}else{
+			$ns='';
+			$pos = strrpos($rsClassName,'\\');
+			$ns = substr($rsClassName,0,$pos);
+			$class = $names[$num-1];
+		}
+		if($ns == 'PR'){ // Pronto
+			foreach($this->aSysSubDirs_ as $path){
+				$file = $this->sSysRoot_.'/'.$path.'/'.$class.'.class';
+				$file2 = $this->sSysRoot_.'/'.$path.'/'.$class.'.php';
+				if(is_readable($file)){
+					require_once($file);
+					return;
+				}else if(is_readable($file2)){
+					require_once($file2);
+					return;
+				}
+			}
+		}else{ // External
+			if(!empty($this->sYourDispRoot_)){
+				$file = $this->sYourDispRoot_.'/'.$class.'.class';
+				$file2 = $this->sYourDispRoot_.'/'.$class.'.php';
+				if(is_readable($file)){
+					require_once($file);
+					return;
+				}else if(is_readable($file2)){
+					require_once($file2);
+					return;
+				}
+			}
+			if(array_key_exists($ns,$this->aPaths_)){
+				foreach($this->aPaths_[$ns] as $path){
+					$file = $path.'/'.$class.'.class';
+					$file2 = $path.'/'.$class.'.php';
+					if(is_readable($file)){
+						require_once($file);
+						return;
+					}else if(is_readable($file2)){
+						require_once($file2);
+						return;
+					}
+				}
+			}
+		}
+		ELOG(SMSG('PR_E001',$rsClassName));
+	}
+}
+?>

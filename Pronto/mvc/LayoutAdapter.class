@@ -1,0 +1,252 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Class - View
+ *      レイアウトアダプタークラス
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+class LayoutAdapter extends Layout{
+
+	private $bNoRobots_ = false;
+	private $sTitle_ = null;
+	private $sIndicatorPath_ = null;
+	private $aSheets_ = array();
+	private $aScripts_ = array();
+	private $aClasses_ = array();
+	private $aStyles_ = array();
+	private $aTemplates_ = array();
+	private $sScriptCode_ = '';
+
+	protected $sRelPath = '';
+	protected $sRelPath2 = '';
+
+	public function __construct(){
+		$this->oMessage = new Message();
+		$subdir = Request::$sSUBDIR;
+		$num = 0;
+		if(!empty($subdir)) $num = count(explode('/',$subdir));
+		for($i=0; $i<$num; $i++) $this->sRelPath .= '../';
+		$this->sRelPath = HTTPUtil::formatURL($this->sRelPath);
+		$subdir = Request::$sSUBDIR2;
+		$num = 0;
+		if(!empty($subdir)) $num = count(explode('/',$subdir));
+		for($i=0; $i<$num; $i++) $this->sRelPath2 .= '../';
+		$this->sRelPath2 = HTTPUtil::formatURL($this->sRelPath2);
+	}
+
+/*---------------------------------------------------------------------------*
+ * Public Methods
+ *---------------------------------------------------------------------------*/
+	public final function noRobots(){
+		$this->bNoRobots_ = true;
+	}
+
+	public final function setTitle($rsTitle){
+		$this->sTitle_ = $rsTitle;
+	}
+
+	public final function setIndicatorPath($rsPath){
+		$this->sIndicatorPath_ = $rsPath;
+	}
+
+	public final function addSheet($rsSrcPath){
+		$this->aSheets_[] = $rsSrcPath;
+	}
+
+	public final function addScript($rsSrcPath){
+		$this->aScripts_[] = $rsSrcPath;
+	}
+
+	public final function setClass($riType,$rsClass){
+		$this->aClasses_[$riType] = $rsClass;
+	}
+
+	public final function setStyle($riType,$rsStyle){
+		$this->aStyles_[$riType] = $rsStyle;
+	}
+
+	public final function addScriptCode($rsCode){
+		$this->sScriptCode_ .= $rsCode;
+	}
+
+	public final function getRelativePath(){
+		return $this->sRelPath;
+	}
+
+	public final function getRelativePath2(){
+		return $this->sRelPath2;
+	}
+
+/*---------------------------------------------------------------------------*
+ * Inherited Abstract Methods
+ *---------------------------------------------------------------------------*/
+	// @Override
+	public function hasLayoutTemplate($riLayout){
+		if($riLayout == Layout::SCRIPT){
+			if(empty($this->sScriptCode_)) return false;
+			return true;
+		}
+		return !empty($this->aTemplates_[$riLayout]);
+	}
+
+	// @Override
+	public function setLayoutTemplate($riLayout,$rsFile){
+		if(empty($rsFile)){
+			$this->aTemplates_[$riLayout] = null;
+			return;
+		}
+		if(!is_readable($rsFile)){
+			ELOG(SMSG('PR_E015',$rsFile));
+			return;
+		}
+		$this->aTemplates_[$riLayout] = $rsFile;
+	}
+
+	// @Override
+	protected function htmlHeader(){
+		print '<!DOCTYPE html>'."\n";
+		print '<!-- 文字コード判別用 -->'."\n";
+		print '<html lang="ja">'."\n";
+		print '<head>'."\n";
+		print '<meta charset="UTF-8">'."\n";
+		print '<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">'."\n";
+		if($this->bNoRobots_) print '<meta name="robots" content="noindex,nofollow">'."\n";
+		print '<meta name="author" content="">'."\n";
+		print '<meta name="keywords" content="">'."\n";
+		print '<meta name="description" content="">'."\n";
+		print '<title>'.$this->sTitle_.'</title>'."\n";
+		$ver = SysEnv::getVersion();
+		if(!empty($this->aSheets_)){
+			foreach($this->aSheets_ as $path){
+				print '<link rel="stylesheet" href="'.$path.'?v='.$ver.'" type="text/css" media="all">'."\n";
+			}
+		}
+		if(!empty($this->aScripts_)){
+			foreach($this->aScripts_ as $path){
+				print '<script type="text/Javascript" src="'.$path.'?v='.$ver.'" charset="utf-8"></script>'."\n";
+			}
+		}
+		print '</head>'."\n\n";
+		$attr = '';
+		if(!empty($this->aClasses_[self::BODY])) $attr .= ' class="'.$this->aClasses_[self::BODY].'"';
+		if(!empty($this->aStyles_[self::BODY])) $attr .= ' style="'.$this->aStyles_[self::BODY].'"';
+		print '<body'.$attr.'>'."\n";
+		if(!empty($this->sIndicatorPath_)){
+			print '<div id="'.C_PR_PREFIX_TAG.'maskAll" class="'.C_PR_PREFIX_STYLE.'maskAll"></div>'."\n";
+			print '<div id="'.C_PR_PREFIX_TAG.'indicator" class="'.C_PR_PREFIX_STYLE.'indicator">';
+			print '<img src="'.$this->sIndicatorPath_.'f"><span id="'.C_PR_PREFIX_TAG.'indicator_msg" style="margin-left:10px;"></span></div>'."\n";
+		}
+	}
+
+	// @Override
+	protected function htmlFooter(){
+		print "\n".'</body>'."\n";
+		print '</html>'."\n";
+	}
+
+	// @Override
+	protected function header(){
+		$clas = '';
+		if(array_key_exists(self::HEADER,$this->aClasses_)) $clas = $this->aClasses_[self::HEADER];
+		$style = '';
+		if(array_key_exists(self::HEADER,$this->aStyles_)) $style = $this->aStyles_[self::HEADER];
+		$bTag = false;
+		if((!empty($clas))||(!empty($style))) $bTag = true;
+		print "\n".'<!-- Header Start -->'."\n";
+		if($bTag) print '<header id="lay_header" class="'.$clas.'" style="'.$style.'">'."\n";
+		$tmpl = $this->aTemplates_[Layout::HEADER];
+		if(!empty($tmpl)) include($tmpl);
+		if($bTag) print '</header>'."\n";
+		print '<!-- Header End -->'."\n";
+	}
+
+	// @Override
+	protected function left(){
+		$clas = '';
+		if(array_key_exists(self::LEFT,$this->aClasses_)) $clas = $this->aClasses_[self::LEFT];
+		$style = '';
+		if(array_key_exists(self::LEFT,$this->aStyles_)) $style = $this->aStyles_[self::LEFT];
+		$bTag = false;
+		if((!empty($clas))||(!empty($style))) $bTag = true;
+		print "\n".'<!-- Left Start -->'."\n";
+		if($bTag) print '<aside id="lay_left" class="'.$clas.'" style="'.$style.'">'."\n";
+		$tmpl = $this->aTemplates_[Layout::LEFT];
+		if(!empty($tmpl)) include($tmpl);
+		if($bTag) print '</aside>'."\n";
+		print '<!-- Left End -->'."\n";
+	}
+
+	// @Override
+	protected function center(){
+		$clas = '';
+		if(array_key_exists(self::CENTER,$this->aClasses_)) $clas = $this->aClasses_[self::CENTER];
+		$style = '';
+		if(array_key_exists(self::CENTER,$this->aStyles_)) $style = $this->aStyles_[self::CENTER];
+		$bTag = false;
+		if((!empty($clas))||(!empty($style))) $bTag = true;
+		print "\n".'<!-- Center Start -->'."\n";
+		if($bTag) print '<div id="lay_center" class="'.$clas.'" style="'.$style.'">'."\n";
+		if(!empty($this->oMessage)){
+			$html = $this->oMessage->toHTML();
+			if(!empty($html)) print $html;
+		}
+		$tmpl = $this->aTemplates_[Layout::CENTER];
+		if(!empty($tmpl)) include($tmpl);
+		if($bTag) print '</div>'."\n";
+		print '<!-- Center End -->'."\n";
+	}
+
+	// @Override
+	protected function right(){
+		$clas = '';
+		if(array_key_exists(self::RIGHT,$this->aClasses_)) $clas = $this->aClasses_[self::RIGHT];
+		$style = '';
+		if(array_key_exists(self::RIGHT,$this->aStyles_)) $style = $this->aStyles_[self::RIGHT];
+		$bTag = false;
+		if((!empty($clas))||(!empty($style))) $bTag = true;
+		print "\n".'<!-- Right Start -->'."\n";
+		if($bTag) print '<aside id="lay_right" class="'.$clas.'" style="'.$style.'">'."\n";
+		$tmpl = $this->aTemplates_[Layout::RIGHT];
+		if(!empty($tmpl)) include($tmpl);
+		if($bTag) print '</aside>'."\n";
+		print '<!-- Right End -->'."\n";
+	}
+
+	// @Override
+	protected function footer(){
+		$clas = '';
+		if(array_key_exists(self::FOOTER,$this->aClasses_)) $clas = $this->aClasses_[self::FOOTER];
+		$style = '';
+		if(array_key_exists(self::FOOTER,$this->aStyles_)) $style = $this->aStyles_[self::FOOTER];
+		$bTag = false;
+		if((!empty($clas))||(!empty($style))) $bTag = true;
+		print "\n".'<!-- Footer Start -->'."\n";
+		if($bTag) print '<footer id="lay_footer" class="'.$clas.'" style="'.$style.'">'."\n";
+		$tmpl = $this->aTemplates_[Layout::FOOTER];
+		if(!empty($tmpl)) include($tmpl);
+		if($bTag) print '</footer>'."\n";
+		print '<!-- Footer End -->'."\n";
+	}
+
+	// @Override
+	protected function script(){
+		print "\n".'<!-- Script Start -->'."\n";
+		print '<script type="text/JavaScript">'."\n";
+		print 'pronload.add(function(){'."\n";
+		if(SysEnv::getTraceLevel() != 0){
+			print 'prdebug.setLevel(1);'."\n";
+			print 'try{'."\n";
+		}
+		print $this->sScriptCode_;
+		if(SysEnv::getTraceLevel() != 0){
+			print '}catch(exp){'."\n";
+			print '	 prdebug.alert(exp.message);'."\n";
+			print '}'."\n";
+		}
+		print '});'."\n";
+		print '</script>'."\n";
+		print '<!-- Script End -->'."\n";
+	}
+}
+?>

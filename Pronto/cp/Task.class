@@ -1,0 +1,22 @@
+<?php
+/* Copyright 2013 dodat */
+/*---------------------------------------------------------------------------*
+ * Interface - Batch
+ *      タスクインタフェース
+ *---------------------------------------------------------------------------*/
+namespace PR;
+
+interface Task{
+
+	public function setDenySys($raDenySys);
+	public function getUsage();
+	public function getName();
+	public function hasDao();
+	public function hasTran();
+	public function init($roDate);
+	public function checkOptions();
+	public function action();
+	public function hasCommit();
+
+}
+?>
