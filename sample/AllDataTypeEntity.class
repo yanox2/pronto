@@ -1,0 +1,24 @@
+<?php
+/*---------------------------------------------------------------------------*
+ * Class - Entity Bean
+ *      データタイプEntity
+ *---------------------------------------------------------------------------*/
+namespace sample;
+
+class AllDataTypeEntity{
+
+	public $iNumeric = 0; // prCol_Numeric int (\PR\Model::INS_SERIAL)
+	public $fFloat = 0.0; // prCol_Float double
+	public $sAlphabet = null; // prCol_Alphabet varchar(255)
+	public $sAlphaNumeric = null; // s_prCol_AlphaNumeric varchar(255)
+	public $sText = null; // s_prCol_Text text
+	public $sPassword = null; // s_prCol_Password varchar(255)
+	public $sUrl = null; // s_prCol_Url varchar(255)
+	public $sEMail = null; // prCol_EMail varchar(255)
+	public $sPostCode = null; // prCol_PostCode varchar(8)
+	public $sTel = null; // s_prCol_Tel varchar(12)
+	public $iDate = 0; // prCol_Date int
+	public $sDomain = null; // prCol_Domain varchar(255)
+
+}
+?>

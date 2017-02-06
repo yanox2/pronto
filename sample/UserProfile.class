@@ -1,0 +1,50 @@
+<?php
+/*---------------------------------------------------------------------------*
+ * Class - Entity Container
+ *      ユーザプロファイル
+ *---------------------------------------------------------------------------*/
+namespace sample;
+
+class UserProfile extends \PR\Container{
+
+	protected $aNameTags = null;
+	protected $aTargets = array('iSysId','iUserId','sLoginId','sPasswd','sName','sEMail','iLocale','sNote','iAuth','iState','iLastLogin','iChangeDate','iFail','iDate');
+
+	// ユーザ種別
+	const AUTH_ADMIN = 1;
+	const AUTH_MANAGER = 2;
+	const AUTH_USER = 3;
+
+	// ステータス
+	const ST_LIVE = 1;
+	const ST_DEAD = 2;
+
+	public $aStrs_iLocale = array('','日本語','英語');
+	public $aStrs_iAuth = array('','Administrator','管理者','利用者');
+	public $aStrs_iState = array('','生存','死亡');
+
+	public function __construct($roDao=null){
+		parent::__construct($roDao);
+		$aPrimaryKeys = array('iSysId','iUserId');
+		$aInsKey = array('prCol_UserId'=>\PR\Model::INS_SERIAL);
+		$sMyName = get_class($this);
+		$this->setParameters('PRUserProfiles',$aPrimaryKeys,$aInsKey,$sMyName);
+
+		$this->aNameTags = array();
+		$this->aNameTags['iSysId'] = new \PR\NameTag('iSysId','prReq_SysId','prCol_SysId','サブシステムID',\PR\Model::DT_NUMERIC);
+		$this->aNameTags['iUserId'] = new \PR\NameTag('iUserId','prReq_UserId','prCol_UserId','ユーザーID',\PR\Model::DT_NUMERIC);
+		$this->aNameTags['sLoginId'] = new \PR\NameTag('sLoginId','prReq_LoginId','s_prCol_LoginId','ログインID',\PR\Model::DT_ALPHANUMERIC);
+		$this->aNameTags['sPasswd'] = new \PR\NameTag('sPasswd','prReq_Passwd','s_prCol_Passwd','パスワード',\PR\Model::DT_ALPHANUMERIC);
+		$this->aNameTags['sName'] = new \PR\NameTag('sName','prReq_Name','s_prCol_Name','氏名',\PR\Model::DT_TEXT);
+		$this->aNameTags['sEMail'] = new \PR\NameTag('sEMail','prReq_EMail','prCol_EMail','メールアドレス',\PR\Model::DT_EMAIL);
+		$this->aNameTags['iLocale'] = new \PR\NameTag('iLocale','prReq_Locale','prCol_Locale','言語',\PR\Model::DT_NUMERIC);
+		$this->aNameTags['sNote'] = new \PR\NameTag('sNote','prReq_Note','s_prCol_Note','備考',\PR\Model::DT_TEXT);
+		$this->aNameTags['iAuth'] = new \PR\NameTag('iAuth','prReq_Auth','prCol_Auth','権限',\PR\Model::DT_NUMERIC);
+		$this->aNameTags['iState'] = new \PR\NameTag('iState','prReq_State','prCol_State','ステータス',\PR\Model::DT_NUMERIC);
+		$this->aNameTags['iLastLogin'] = new \PR\NameTag('iLastLogin','prReq_LastLogin','prCol_LastLogin','最終ログイン',\PR\Model::DT_NUMERIC);
+		$this->aNameTags['iChangeDate'] = new \PR\NameTag('iChangeDate','prReq_ChangeDate','prCol_ChangeDate','パスワード変更日時',\PR\Model::DT_NUMERIC);
+		$this->aNameTags['iFail'] = new \PR\NameTag('iFail','prReq_Fail','prCol_Fail','ログイン失敗回数',\PR\Model::DT_NUMERIC);
+		$this->aNameTags['iDate'] = new \PR\NameTag('iDate','prReq_Date','prCol_Date','日時',\PR\Model::DT_DATE);
+	}
+}
+?>

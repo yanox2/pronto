@@ -1,0 +1,26 @@
+<?php
+/*---------------------------------------------------------------------------*
+ * Class - Entity Bean
+ *      ユーザプロファイルEntity
+ *---------------------------------------------------------------------------*/
+namespace sample;
+
+class UserProfileEntity{
+
+	public $iSysId = 0; // prCol_SysId int
+	public $iUserId = 0; // prCol_UserId int (\PR\Model::INS_SERIAL)
+	public $sLoginId = null; // s_prCol_LoginId varchar(50)
+	public $sPasswd = null; // s_prCol_Passwd varchar(50)
+	public $sName = null; // s_prCol_Name varchar(50)
+	public $sEMail = null; // prCol_EMail varchar(50)
+	public $iLocale = 0; // prCol_Locale int
+	public $sNote = null; // s_prCol_Note text
+	public $iAuth = 0; // prCol_Auth int
+	public $iState = 0; // prCol_State int
+	public $iLastLogin = 0; // prCol_LastLogin int
+	public $iChangeDate = 0; // prCol_ChangeDate int
+	public $iFail = 0; // prCol_Fail int
+	public $iDate = 0; // prCol_Date int
+
+}
+?>
