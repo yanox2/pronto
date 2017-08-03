@@ -22,6 +22,12 @@ th{
 td{
 	padding:0 3px;
 }
+pre{
+	white-space: pre-wrap;       /* css-3 */
+	white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+	white-space: -pre-wrap;      /* Opera 4-6 */
+	white-space: -o-pre-wrap;    /* Opera 7 */
+}
 
 /*---------------------------------------------------------------------------*
  * layout
@@ -86,4 +92,20 @@ ul.sm-sidemenu ul{
  *---------------------------------------------------------------------------*/
 #bar1{
 	font-size: 0.9em;
+}
+
+/*---------------------------------------------------------------------------*
+ * index.html
+ *---------------------------------------------------------------------------*/
+.preCode{
+	margin:0px 20px;
+	padding: 10px;
+	font-size: 14px;
+	line-height: 16px;
+	border: 1px solid dimgray;
+	background-color: ghostwthite;
+}
+.descript{
+	margin: 20px 0;
+	color: dimgray;
 }

@@ -4,30 +4,24 @@
  * Test
  *      ビュー
  *---------------------------------------------------------------------------*/
-require_once('../../path.inc');
-require_once(C_PR_HOME_PATH.'/test/05.View/test02/sysdef_org.inc');
-
-$homeDir = '/'.\PR\HTTPUtil::formatURL(C_PR_HOME_PATH);
-$insDir = '/'.\PR\HTTPUtil::formatURL(C_PR_INSTALL_PATH);
-$testDir = '/'.\PR\HTTPUtil::formatURL(C_PR_TEST_ROOT).'/05.View/test02';
-$uriRoot = $testDir;
+require_once('../../etc/path.inc');
+require_once('./sysdef_org.inc');
 
 $st = intval($_GET['st']);
 try{
 	$loader = \PR\ClassLoader::getInstance();
-	$aPaths = array($homeDir.'/test/05.View/test02');
-	$loader->setPaths($aPaths,'');
+	$aPaths = array(C_INSTALL_PATH_TEST.'/testPronto/05.View/test02');
+	$loader->setPaths($aPaths);
 
 	$view = new \PR\View();
-	$view->setRenderer(new MyRenderer($homeDir));
+	$view->setRenderer(new MyRenderer());
 	$ren = $view->getRenderer();
-	$view->setValue('homeDir',$homeDir);
-	$view->setValue('insDir',$insDir);
-	$view->setValue('testDir',$testDir);
+
+	$uri = \PR\SysEnv::getYourDocRoot().'/05.View/test02';
+	$view->setValue('myURI',$uri);
 
 	if(\PR\HTTPUtil::isPost()){
 		$view->setValue('methodType','POST');
-		//\PR\HTTPUtil::redirect('0502.php');
 	}else{
 		$view->setValue('methodType','GET');
 	}

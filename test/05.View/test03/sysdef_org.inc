@@ -10,7 +10,7 @@ if(defined('C_PR_SYSDEF')) return;
 define('C_PR_SYSDEF',1);
 
 // Pronto
-define('C_PR_ROOT',C_PR_INSTALL_PATH);
+define('C_PR_ROOT',C_INSTALL_PATH_PRONTO.'/Pronto');
 define('C_PR_SYSLOCALE',1); // system locale 1:japanese 2:english
 
 // Sub System
@@ -21,7 +21,7 @@ define('C_PR_SUBSYS_URIROOT',''); // for distinguishing sub directory
 // Your Environment
 define('C_PR_YOUR_VERSION','0.00');
 define('C_PR_YOUR_DIRECTORYINDEX',''); // directory index
-define('C_PR_YOUR_DOCROOT',C_PR_TEST_ROOT); // your document root path
+define('C_PR_YOUR_DOCROOT','/testPronto'); // your document root path
 define('C_PR_YOUR_DISPROOT',''); // your dispatching file path
 define('C_PR_YOUR_ENTITYFILE_PATH',''); // no use
 

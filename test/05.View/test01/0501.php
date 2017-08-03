@@ -4,16 +4,13 @@
  * Test
  *      ビュー
  *---------------------------------------------------------------------------*/
-require_once('../../path.inc');
-require_once(C_PR_HOME_PATH.'/test/05.View/test01/sysdef_org.inc');
+require_once('../../etc/path.inc');
+require_once('./sysdef_org.inc');
 
-$homeDir = '/'.\PR\HTTPUtil::formatURL(C_PR_HOME_PATH);
-$insDir = '/'.\PR\HTTPUtil::formatURL(C_PR_INSTALL_PATH);
-$testDir = '/'.\PR\HTTPUtil::formatURL(C_PR_TEST_ROOT).'/05.View/test01';
-$uriRoot = $testDir;
-
+$uri = \PR\SysEnv::getYourDocRoot().'/05.View/test01';
 $view = new \PR\View();
 $view->setValue('methodType','GET');
+$view->setValue('myURI',$uri);
 $view->setTemplate('tpl/test01.tpl');
 
 $st = intval($_GET['st']);

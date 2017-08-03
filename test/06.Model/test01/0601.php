@@ -4,14 +4,17 @@
  * Test
  *      エンティティモデル生成
  *---------------------------------------------------------------------------*/
-require_once('../../path.inc');
-require_once(C_PR_HOME_PATH.'/test/06.Model/test01/sysdef_org.inc');
+require_once('../../etc/path.inc');
+//require_once('./sysdef_org.inc');
 
-$homeDir = '/'.\PR\HTTPUtil::formatURL(C_PR_HOME_PATH);
-$insDir = '/'.\PR\HTTPUtil::formatURL(C_PR_INSTALL_PATH);
-$testDir = '/'.\PR\HTTPUtil::formatURL(C_PR_TEST_ROOT).'/06.Model/test01';
+$homeDir = '/home/atcuser01/samp'; // dev.zipの展開先ディレクトリ
+if(empty($homeDir)){
+	$path = '06.Model/test01/0601.php';
+	print '<div style="">'.$path.' の$homeDirを編集してください。</div>'."\n";
+	exit();
+}
 
-$rc = chdir($homeDir.'/utility2');
+$rc = chdir($homeDir.'/dev/utility');
 if($rc === false){
 	ELOG('エンティティモデルの生成に失敗しました。rc='.$rc);
 	exit();
@@ -22,20 +25,38 @@ if($rc === false){
 	ELOG('エンティティモデルの生成に失敗しました。rc='.$rc);
 	exit();
 }
-$cmd = 'mv -f *.class '.$homeDir.'/sample';
+$epath = C_INSTALL_PATH_TEST.'/testPronto/etc';
+$cmd = 'mv -f *.class '.$epath;
 $rc = system($cmd);
 if($rc === false){
 	ELOG('エンティティモデルの生成に失敗しました。rc='.$rc);
 	exit();
 }
-print dirname(__FILE__);
-
-header('Content-Type: text/html; charset=utf-8');
-readfile($homeDir.'/sample/AllDataType.class');
-readfile($homeDir.'/sample/AllDataTypeEntity.class');
-readfile($homeDir.'/sample/SubSystem.class');
-readfile($homeDir.'/sample/SubSystemEntity.class');
-readfile($homeDir.'/sample/UserProfile.class');
-readfile($homeDir.'/sample/UserProfileEntity.class');
-
 ?>
+<!DOCTYPE html>
+<!-- 文字コード判別用 -->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<meta name="author" content="dodat">
+<meta name="keywords" content="">
+<meta name="description" content="">
+<title>Pronto</title>
+</head>
+<body class="fontM" style="margin:0; color:black; background-color:#f2f2f2;">
+<div style="">
+<pre><code>
+<?
+htmlspecialchars(readfile($epath.'/AllDataType.class'));
+htmlspecialchars(readfile($epath.'/AllDataTypeEntity.class'));
+htmlspecialchars(readfile($epath.'/SubSystem.class'));
+htmlspecialchars(readfile($epath.'/SubSystemEntity.class'));
+htmlspecialchars(readfile($epath.'/UserProfile.class'));
+htmlspecialchars(readfile($epath.'/UserProfileEntity.class'));
+?>
+</code></pre>
+</div>
+</body>
+</html>

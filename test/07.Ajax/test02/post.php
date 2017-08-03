@@ -6,22 +6,19 @@
  *---------------------------------------------------------------------------*/
 namespace sample;
 
-require_once('../../path.inc');
-require_once(C_PR_HOME_PATH.'/test/07.Ajax/test02/sysdef_org.inc');
+require_once('../../etc/path.inc');
+require_once('./sysdef_org.inc');
 include('./0702a.php');
 
-$homeDir = '/'.\PR\HTTPUtil::formatURL(C_PR_HOME_PATH);
-$insDir = '/'.\PR\HTTPUtil::formatURL(C_PR_INSTALL_PATH);
-$testDir = '/'.\PR\HTTPUtil::formatURL(C_PR_TEST_ROOT).'/07.Ajax/test02';
-
 $loader = \PR\ClassLoader::getInstance();
-$loader->setPaths(array($homeDir.'/sample'),'sample');
+$loader->setPaths(array(C_INSTALL_PATH_TEST.'/testPronto/etc'),'sample');
+\PR\HTMLTag::loadFunc();
 
 $data = new TestData();
 $cntr = new UserProfile();
 if($_POST['updateType'] == 0){
 	$entity = $cntr->newEntity();
-	$cntr->setArray($data->getData($_POST['prReq_UserId']));
+	$cntr->setArray($data->getData($_POST['prReq_UserId']),\PR\Container::COLUMN);
 }
 $cntr->post();
 $msg = '';
@@ -42,37 +39,34 @@ $msg = $cntr->addPostErrorMsgX($msg,"\n",'iAuth',$rc);
 
 $res = array();
 if(empty($msg)){
-$entity = $cntr->getEntity();
-$type = 'replace';
-if($_POST['submitId'] == 'btn_add'){
-	$entity->iUserId++;
-	$type = 'prepend';
-	$res = array('data'=>$cntr->getArray(\PR\Model::TYPE_ALL));
-	$target = array('sLoginId','sName','sEMail','sNote');
-	$tag = $cntr->getTrTag($entity,$target,'div_'.$entity->iUserId.'_');
-	$res['dom'] = array($type=>array('test'=>$tag));
-	$target = array('iUserId','sLoginId','sPasswd','sName','sEMail','iLocale','sNote','iAuth','iState');
-	$cntr->setTargets($target);
-	$items = $cntr->getArray(\PR\Model::TYPE_ALL,'sPost');
-	$res['dom']['items'] = $items;
-	$res['dom']['actId'] = 'div_'.$entity->iUserId.'_sLoginId';
-
-}else if($_POST['submitId'] == 'btn_update'){
+	$entity = $cntr->getEntity();
 	$type = 'replace';
-	$res = array('data'=>$cntr->getArray(\PR\Model::TYPE_ALL));
-	$target = array('sLoginId','sName','sEMail','sNote');
-	$cntr->setTargets($target);
-	$items = $cntr->getArray(\PR\Model::TYPE_ALL,'sVariable',false,'div_'.$entity->iUserId.'_');
-	$res['dom'] = array($type=>$items);
+	if($_POST['submitId'] == 'btn_add'){
+		$entity->iUserId++;
+		$type = 'prepend';
+		$res = array('data'=>$cntr->getArray(\PR\Model::TYPE_ALL));
+		$target = array('sLoginId','sName','sEMail','sNote');
+		$tag = $cntr->getTrTag($entity,$target,'div_'.$entity->iUserId.'_');
+		$res['dom'] = array($type=>array('test'=>$tag));
+		$res['actId'] = 'div_'.$entity->iUserId.'_sLoginId';
+		$target = array('iUserId','sLoginId','sPasswd','sName','sEMail','iLocale','sNote','iAuth','iState');
+		$items = $cntr->getArrayX($target,\PR\Container::POST);
+		$res['items']['replace'] = $items;
 
-}else if($_POST['submitId'] == 'btn_remove'){
-	$type = 'removef';
-	$res = array('data'=>$cntr->getArray(\PR\Model::TYPE_ALL));
-	$target = array('sLoginId','sName','sEMail','sNote');
-	$cntr->setTargets($target);
-	$items = $cntr->getArray(\PR\Model::TYPE_ALL,'sVariable',false,'div_'.$entity->iUserId.'_');
-	$res['dom'] = array($type=>$items);
-}
+	}else if($_POST['submitId'] == 'btn_update'){
+		$type = 'replace';
+		$res = array('data'=>$cntr->getArray(\PR\Model::TYPE_ALL));
+		$target = array('sLoginId','sName','sEMail','sNote');
+		$items = $cntr->getArrayX($target,\PR\Container::VARIABLE,'div_'.$entity->iUserId.'_');
+		$res['dom'] = array($type=>$items);
+
+	}else if($_POST['submitId'] == 'btn_remove'){
+		$type = 'removef';
+		$res = array('data'=>$cntr->getArray(\PR\Model::TYPE_ALL));
+		$target = array('sLoginId','sName','sEMail','sNote');
+		$items = $cntr->getArrayX($target,\PR\Container::VARIABLE,'div_'.$entity->iUserId.'_');
+		$res['dom'] = array($type=>$items);
+	}
 }
 
 $rcode = 0;

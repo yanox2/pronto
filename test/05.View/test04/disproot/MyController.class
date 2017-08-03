@@ -1,0 +1,47 @@
+<?php
+/* Copyright 2016 dodat */
+/*---------------------------------------------------------------------------*
+ * Controller
+ *      コントローラ
+ *---------------------------------------------------------------------------*/
+
+class MyController extends \PR\Controller{
+
+	// @Override
+	protected function before(){
+		$view = $this->getView();
+		$view->setRenderer(new MyRenderer());
+		$uri = \PR\SysEnv::getYourDocRoot().'/05.View/test04';
+		$view->setValue('myURI',$uri);
+	}
+
+	// @Override
+	protected function action(){
+		$path = \PR\SysEnv::getYourDispRoot().'/tpl/';
+		$view = $this->getView();
+		$ren = $view->getRenderer();
+		if(\PR\HTTPUtil::isPost()){
+			$view->setValue('methodType','POST');
+			//$this->setRedirect('0504.php');
+		}else{
+			$view->setValue('methodType','GET');
+		}
+		$st = intval($_GET['st']);
+		if($st == 0){
+			$ren->setCenter($path.'center.tpl');
+		}else if($st == 1){
+			$ren->setCenter($path.'center2.tpl');
+		}else if($st == 2){
+			$ren->setCenter($path.'center.tpl');
+		}else if($st == 3){
+			$this->ajax();
+			$this->resAjax(0,'0504 OK!!',array('methodType'=>'ajax'));
+		}else if($st == 4){
+			$ren->setCenter($path.'center.tpl');
+			throw new \PR\Exception(-1,'エラーメッセージを出力します。');
+		}else if($st == 5){
+			throw new \PR\Exception(-1,'Fatal Error!! です。戻るボタンで戻ってください。',true);
+		}
+	}
+}
+?>

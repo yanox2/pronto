@@ -7,19 +7,24 @@
 
 class MyRenderer extends \PR\LayoutAdapter{
 
-	public function __construct($rsHomeDir){
+	public function __construct(){
 		parent::__construct();
 		$root = \PR\SysEnv::getYourDocRoot();
 		$path = $root.'/etc/';
 
+		$this->setTitle('Pronto');
 		$this->noRobots();
 		$this->addSheet($path.'style_pronto.css');
+		$this->addSheet($path.'style_test.css');
 		$this->addScript($path.'jquery-2.1.4.min.js');
 		$this->addScript($path.'script_pronto.js');
+		$this->addScript($path.'script_test.js');
 		$this->setClass(\PR\Layout::BODY,'fontM');
 		$this->setStyle(\PR\Layout::BODY,'margin:0; color:black; background-color:#f2f2f2;');
-		$this->setLayoutTemplate(\PR\Layout::HEADER,$rsHomeDir.'/test/etc/header.tpl');
-		$this->setLayoutTemplate(\PR\Layout::FOOTER,$rsHomeDir.'/test/etc/footer.tpl');
+		$this->setClass(\PR\Layout::CENTER,'col span_14');
+		$this->setStyle(\PR\Layout::CENTER,'min-height:1000px; padding:30px;');
+		$this->setLayoutTemplate(\PR\Layout::LEFT,'tpl/left.tpl');
+		$this->setLayoutTemplate(\PR\Layout::RIGHT,'tpl/right.tpl');
 		$styles = array('','font-size:18px;','font-size:18px;','font-size:18px;');
 		$this->setMessageStyles($styles);
 		$script = ''
@@ -28,7 +33,6 @@ class MyRenderer extends \PR\LayoutAdapter{
 			.'      .append($("<input/>",{type:"hidden",name:"pd",value:"hello!!"}))'."\n"
 			.'      .appendTo(document.body)'."\n"
 			.'      .submit();'."\n"
-			.'    //$.post("0502.php?st=2",{"pd":"hello!!"});'."\n"
 			.'  });'."\n"
 			.'  $("#ajaxId").click(function(){'."\n"
 			.'    $.ajax({'."\n"
@@ -50,10 +54,6 @@ class MyRenderer extends \PR\LayoutAdapter{
 			.'    });'."\n"
 			.'  });'."\n";
 		$this->addScriptCode($script);
-	}
-
-	// @Override
-	protected function htmlHeader(){
 	}
 
 	public function setCenter($rsPath){

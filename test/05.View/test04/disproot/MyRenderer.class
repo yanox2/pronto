@@ -1,0 +1,64 @@
+<?php
+/* Copyright 2016 dodat */
+/*---------------------------------------------------------------------------*
+ * View
+ *      レンダラー
+ *---------------------------------------------------------------------------*/
+
+class MyRenderer extends \PR\LayoutAdapter{
+
+	public function __construct(){
+		parent::__construct();
+		$root = \PR\SysEnv::getYourDocRoot();
+		$path = $root.'/etc/';
+		$droot = \PR\SysEnv::getYourDispRoot();
+
+		$this->setTitle('Pronto');
+		$this->noRobots();
+		$this->addSheet($path.'style_pronto.css');
+		$this->addSheet($path.'style_test.css');
+		$this->addScript($path.'jquery-2.1.4.min.js');
+		$this->addScript($path.'script_pronto.js');
+		$this->addScript($path.'script_test.js');
+		$this->setClass(\PR\Layout::BODY,'fontM');
+		$this->setStyle(\PR\Layout::BODY,'margin:0; color:black; background-color:#f2f2f2;');
+		$this->setClass(\PR\Layout::CENTER,'col span_14');
+		$this->setStyle(\PR\Layout::CENTER,'min-height:1000px; padding:30px;');
+		$this->setLayoutTemplate(\PR\Layout::LEFT,$droot.'/tpl/left.tpl');
+		$this->setLayoutTemplate(\PR\Layout::RIGHT,$droot.'/tpl/right.tpl');
+		$styles = array('','font-size:18px;','font-size:18px;','font-size:18px;');
+		$this->setMessageStyles($styles);
+		$script = ''
+			.'  $("#postId").click(function(){'."\n"
+			.'    $("<form/>",{action:"0504.php?st=2",method:"post"})'."\n"
+			.'      .append($("<input/>",{type:"hidden",name:"pd",value:"hello!!"}))'."\n"
+			.'      .appendTo(document.body)'."\n"
+			.'      .submit();'."\n"
+			.'  });'."\n"
+			.'  $("#ajaxId").click(function(){'."\n"
+			.'    $.ajax({'."\n"
+			.'      type: "get",'."\n"
+			.'      url: "0504.php?st=3",'."\n"
+			.'      async:false,'."\n"
+			.'      cache:false,'."\n"
+			.'      timeout:30000,'."\n"
+			.'      dataType:"jsonp",'."\n"
+			.'      jsonp:"jcbk",'."\n"
+			.'      data: {"pd":"hello!!"},'."\n"
+			.'    }).done(function(data,status,xhr){'."\n"
+			.'      // 通信成功時の処理'."\n"
+			.'      alert(status+" "+" "+data.message+" "+data.methodType+"!!");'."\n"
+			.'    }).fail(function(xhr,status,error){'."\n"
+			.'      // 通信失敗時の処理'."\n"
+			.'    }).always(function(arg1,status,arg2){'."\n"
+			.'      // 通信完了時の処理'."\n"
+			.'    });'."\n"
+			.'  });'."\n";
+		$this->addScriptCode($script);
+	}
+
+	public function setCenter($rsPath){
+		$this->setLayoutTemplate(\PR\Layout::CENTER,$rsPath);
+	}
+}
+?>

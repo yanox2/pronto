@@ -4,26 +4,21 @@
  * Controller
  *      コントローラ
  *---------------------------------------------------------------------------*/
-require_once('../../path.inc');
-require_once(C_PR_HOME_PATH.'/test/05.View/test03/sysdef_org.inc');
+require_once('../../etc/path.inc');
+require_once('./sysdef_org.inc');
 
 class Sample extends \PR\Controller{
 
 	// @Override
 	protected function before(){
-		$homeDir = '/'.\PR\HTTPUtil::formatURL(C_PR_HOME_PATH);
-		$insDir = '/'.\PR\HTTPUtil::formatURL(C_PR_INSTALL_PATH);
-		$testDir = '/'.\PR\HTTPUtil::formatURL(C_PR_TEST_ROOT).'/05.View/test03';
-
 		$loader = \PR\ClassLoader::getInstance();
-		$aPaths = array($homeDir.'/test/05.View/test03');
-		$loader->setPaths($aPaths,'');
+		$aPaths = array(C_INSTALL_PATH_TEST.'/testPronto/05.View/test03');
+		$loader->setPaths($aPaths);
 
 		$view = $this->getView();
-		$view->setRenderer(new MyRenderer($homeDir));
-		$view->setValue('homeDir',$homeDir);
-		$view->setValue('insDir',$insDir);
-		$view->setValue('testDir',$testDir);
+		$view->setRenderer(new MyRenderer());
+		$uri = \PR\SysEnv::getYourDocRoot().'/05.View/test03';
+		$view->setValue('myURI',$uri);
 	}
 
 	// @Override

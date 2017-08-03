@@ -13,19 +13,22 @@ class TestModel extends \PR\Model{
 
 	public function start($riIdxType=0){
 		$this->iIdxType = $riIdxType;
+
+		// DB接続
 		$this->oDao->connect();
 		$this->oDao->begin();
 
-		$cntr = new AllDataType($this->oDao);
+		// Index
+		$this->oAllDataType = new AllDataType($this->oDao);
 		if($riIdxType == 0){
-			$cntr->setIndex(\PR\Model::IDX_SERIAL);
+			$this->oAllDataType->setIndex(\PR\Model::IDX_SERIAL);
 		}else if($riIdxType == 1){
-			$cntr->setIndex(\PR\Model::IDX_HIERARCHY,array('prCol_Alphabet','prCol_Numeric'));
+			$this->oAllDataType->setIndex(\PR\Model::IDX_HIERARCHY,array('prCol_Alphabet','prCol_Numeric'));
 		}else if($riIdxType == 2){
-			$cntr->setIndex(\PR\Model::IDX_JOINKEY,array('prCol_Alphabet','prCol_Numeric'));
+			$this->oAllDataType->setIndex(\PR\Model::IDX_JOINKEY,array('prCol_Alphabet','prCol_Numeric'));
 		}
-		$this->oAllDataType = $cntr;
 
+		// ページャ設定
 		$pager = new \PR\Pager('0603.php',100,5);
 		$this->oAllDataType->setPager($pager);
 	}
@@ -38,22 +41,20 @@ class TestModel extends \PR\Model{
 		}
 	}
 
-	public function getAllDataType(){
-		return $this->oAllDataType;
-	}
-
+	// 一覧の取得
 	public function listData(){
-		$rc = $this->oAllDataType->pageX(array());
+		$rc = $this->oAllDataType->pageX();
 		return $rc;
 	}
 
+	// 1 件参照
 	public function select(){
 		$this->oAllDataType->post();
-		$this->oAllDataType->setTargetVars(\PR\Model::TYPE_PRIMARY);
 		$rc = $this->oAllDataType->readX();
 		return $rc;
 	}
 
+	// データの追加
 	public function insert(){
 		$this->oAllDataType->post();
 		$this->sErrMsg = $this->oAllDataType->checkPostByTarget('<br>',6,0,2);
@@ -63,6 +64,7 @@ class TestModel extends \PR\Model{
 		return 0;
 	}
 
+	// データの更新
 	public function update(){
 		$this->oAllDataType->post();
 		$this->sErrMsg = $this->oAllDataType->checkPostByTarget('<br>',6,0,2);
@@ -72,6 +74,7 @@ class TestModel extends \PR\Model{
 		return 0;
 	}
 
+	// データの削除
 	public function remove(){
 		$this->oAllDataType->post();
 		$this->sErrMsg = $this->oAllDataType->checkPostByTarget('<br>',6,0,2);

@@ -5,7 +5,6 @@
  *      フッタ
  *---------------------------------------------------------------------------*/
 ?>
-</div>
 </main>
 
 <script type="text/JavaScript">
@@ -17,18 +16,29 @@ pronload.add(function(){
   }catch(exp){
     prdebug.alert(exp);
   }
-
+<?
+$rpath = \PR\Request::$sPATH;
+$rfile = null;
+if(strpos($rpath,'04.Controller') !== false){
+	if(strpos($rpath,'test01') !== false){
+		$rfile = '0401';
+	}else if(strpos($rpath,'test02') !== false){
+		$rfile = '0402';
+	}
+}
+if(!empty($rfile)){
+?>
   $("#postId").click(function(){
-    $("<form/>",{action:"0401.php?st=2",method:"post"})
+    $("<form/>",{action:"<?=$rfile?>.php?st=2",method:"post"})
       .append($("<input/>",{type:"hidden",name:"pd",value:"hello!!"}))
       .appendTo(document.body)
       .submit();
-    //$.post("0401.php?st=2",{"pd":"hello!!"});
+    //$.post("<?=$rfile?>.php?st=2",{"pd":"hello!!"});
   });
   $("#ajaxId").click(function(){
     $.ajax({
       type: "get",
-      url: "0401.php?st=3",
+      url: "<?=$rfile?>.php?st=3",
       async:false,
       cache:false,
       timeout:30000,
@@ -44,19 +54,8 @@ pronload.add(function(){
       // 通信完了時の処理
     });
   });
+<? } ?>
 });
-/*
-var param = {
-  url:$form.attr("action"),
-  type:$form.attr("method"),
-  async:false,
-  cache:false,
-  timeout:30000,
-  dataType:"jsonp",
-  jsonp:"jcbk",
-  data:$form.serialize()
-};
-*/
 </script>
 
 </body>

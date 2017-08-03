@@ -4,12 +4,21 @@
  * Test
  *      ヘッダ
  *---------------------------------------------------------------------------*/
-if(C_PR_TEST_INDEX == 'true'){
-	require_once('./path.inc');
-}else{
-	require_once('../../path.inc');
+
+$root = \PR\SysEnv::getYourDocRoot();
+/*
+if(empty($root)){
+	$root = '/testPronto';
+	$dir = __DIR__;
+	$insDir = C_INSTALL_PATH_TEST;
+	$pos = strpos($dir,$insDir);
+	if($pos === 0){
+		$len = strlen($insDir);
+		$root = substr($dir,$len);
+		$root = substr($root,0,strlen($root)-4);
+	}
 }
-$root = '/'.trim(C_PR_TEST_ROOT,'/');
+*/
 ?>
 <!DOCTYPE html>
 <!-- 文字コード判別用 -->
@@ -29,6 +38,11 @@ $root = '/'.trim(C_PR_TEST_ROOT,'/');
 <script type="text/javascript" src="<?=$root?>/etc/script_test.js" charset="utf-8"></script>
 </head>
 <body class="fontM" style="margin:0; color:black; background-color:#f2f2f2;">
+<div id="prTag_maskAll" class="prSt_maskAll"></div>
+<div id="prTag_indicator" class="prSt_indicator">
+<img src="<?=$root?>/etc/images/indicator.gif"><span id="prTag_indicator_msg" style="margin-left:10px;"></span>
+</div>
+
 <main class="container row">
 
 <aside id="lay_left" class="col span_5">
@@ -36,7 +50,11 @@ $root = '/'.trim(C_PR_TEST_ROOT,'/');
 <div style="margin:10px auto 0px; text-align:center;">Test</div>
 <div style="margin-top:20px;"></div>
 <div style="margin:10px; font-size:12px;">
-<div>01. Install</div>
+<?php
+$path = $root.'/01.Overview/';
+?>
+<div>01. Overview</div>
+<div style="margin-left:10px;"><a href="<?=$path?>overview.php">Overview</a></div>
 <?php
 $path = $root.'/02.Environment/';
 ?>
@@ -69,17 +87,17 @@ $path = $root.'/06.Model/';
 ?>
 <div>06. Model</div>
 <div style="margin-left:10px;"><a href="<?=$path?>test01/0601.php">Model Generator</a></div>
-<div style="margin-left:10px;"><a href="<?=$path?>test02/0602.php">DB更新</a></div>
+<div style="margin-left:10px;"><a href="<?=$path?>test02/0602.php">POSTチェック</a></div>
 <div style="margin-left:10px;"><a href="<?=$path?>test03/0603.php">DB更新</a></div>
 <?php
 $path = $root.'/07.Ajax/';
 ?>
 <div>07. Ajax</div>
-<div style="margin-left:10px;"><a href="<?=$path?>test01/0701.php">静的フォーム</a></div>
-<div style="margin-left:10px;"><a href="<?=$path?>test02/0702.php">ダイアログ形式フォーム</a></div>
+<div style="margin-left:10px;"><a href="<?=$path?>test01/0701.php">静的データフォーム</a></div>
+<div style="margin-left:10px;"><a href="<?=$path?>test02/0702.php">可変データフォーム</a></div>
+<div style="margin-left:10px;"><a href="<?=$path?>test03/0703.php">データ取得型フォーム</a></div>
+<div style="margin-left:10px;"><a href="<?=$path?>test04/MyController/page/">MVC + Ajax</a></div>
 
 </div>
 </div>
 </aside>
-
-<div id="lay_center" class="col span_19" style="min-height:1000px; padding:30px;">
