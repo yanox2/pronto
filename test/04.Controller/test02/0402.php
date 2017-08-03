@@ -1,11 +1,11 @@
 <?php
 /* Copyright 2016 dodat */
 /*---------------------------------------------------------------------------*
- * Dispatcher
+ * Test
  *      ディスパッチャ
  *---------------------------------------------------------------------------*/
-require_once('../../path.inc');
-require_once(C_PR_HOME_PATH.'/test/04.Controller/test02/sysdef_org.inc');
+require_once('../../etc/path.inc');
+require_once('./sysdef_org.inc');
 
 class Sample extends \PR\Dispatcher{
 

@@ -14,18 +14,16 @@ class Sample extends \PR\Controller{
 		$v = $this->getView();
 		$st = intval($_GET['st']);
 		if($st == 0){
-			$v->setTemplate('tpl/center01.tpl');
+			$v->setTemplate('tpl/menu.tpl');
 		}else{
-			$v->setTemplate('tpl/center02.tpl');
+			$v->setTemplate('tpl/test01.tpl');
 		}
 	}
 
 	// @Override
 	protected function action(){
-		$st = intval($_GET['st']);
-		$uri = \PR\SysEnv::getYourDocRoot().'/04.Controller/test01';
 		$v = $this->getView();
-		$v->setValue('myURI',$uri);
+		$st = intval($_GET['st']);
 		if(\PR\HTTPUtil::isPost()){
 			$v->setValue('methodType','POST');
 			//$this->setRedirect('0401.php');
