@@ -51,12 +51,14 @@ class HTMLTag{
 		return $str;
 	}
 
-	public static function getInputTag($roBean,$raTag,$rbPasswd=false,$rsClass='span4',$rsPHolder=null){
+	public static function getInputTag($roBean,$raTag,$rbPasswd=false,$rsClass='span4',$rsPHolder=null,$rbRequired=false){
 		$var = $raTag->sVariable;
 		$post = $raTag->sPost;
 		$type = 'text';
+		$req = '';
 		if($rbPasswd) $type = 'password';
-		$str = '<input id="'.$post.'" type="'.$type.'" name="'.$post.'" value="'.$roBean->{$var}.'" class="'.$rsClass.'" placeholder="'.$rsPHolder.'">'."\n";
+		if($rbRequired) $req = ' required=""';
+		$str = '<input id="'.$post.'" type="'.$type.'" name="'.$post.'" value="'.$roBean->{$var}.'" class="'.$rsClass.'" placeholder="'.$rsPHolder.'"'.$req.'>'."\n";
 		return $str;
 	}
 
@@ -67,7 +69,7 @@ class HTMLTag{
 		return $str;
 	}
 
-	public static function getRadioTag($roBean,$raTag,$raVals,$raAnnos=null,$rsName=null){
+	public static function getRadioTag($roBean,$raTag,$raVals,$rsClass='',$raAnnos=null,$rsName=null){
 		if(empty($raVals)) return null;
 		$var = $raTag->sVariable;
 		$post = $raTag->sPost;
@@ -75,7 +77,7 @@ class HTMLTag{
 		$str = '';
 		foreach($raVals as $value=>$mName){
 			if(empty($mName)) continue;
-			$str .= '<label class="radio inline"><input type="radio" name="'.$post.'" value="'.$value.'"';
+			$str .= '<label class="radio inline"><input type="radio" name="'.$post.'" class="'.$rsClass.'" value="'.$value.'"';
 			$checked = '';
 			if($roBean->{$var} == $value) $checked = ' checked';
 			$name = $mName;
@@ -163,13 +165,16 @@ class HTMLTag{
 function HIDETAG($roContainer,$rsTitle,$rbHasId=false){
 	return HTMLTag::getHiddenTag($roContainer->getEntity(),$roContainer->getNameTag($rsTitle),$rbHasId);
 }
-function INPTAG($roContainer,$rsTitle,$rbPasswd=false,$rsClass='span4',$rsPHolder=null){
-	return HTMLTag::getInputTag($roContainer->getEntity(),$roContainer->getNameTag($rsTitle),$rbPasswd,$rsClass,$rsPHolder);
+function INPTAG($roContainer,$rsTitle,$rbPasswd=false,$rsClass='span4',$rsPHolder=null,$rbRequired=false){
+	return HTMLTag::getInputTag($roContainer->getEntity(),$roContainer->getNameTag($rsTitle),$rbPasswd,$rsClass,$rsPHolder,$rbRequired);
 }
-function RADTAG($roContainer,$rsTitle,$raAnnos=null,$rsName=null){
+function AREATAG($roContainer,$rsTitle,$rsClass='span4',$rsPHolder=null){
+	return HTMLTag::getAreaTag($roContainer->getEntity(),$roContainer->getNameTag($rsTitle),$rsClass,$rsPHolder);
+}
+function RADTAG($roContainer,$rsTitle,$rsClass=null,$raAnnos=null,$rsName=null){
 	$var = 'aStrs_'.$rsTitle;
 	$entity = $roContainer->getEntity();
-	return HTMLTag::getRadioTag($entity,$roContainer->getNameTag($rsTitle),$roContainer->{$var},$raAnnos,$rsName);
+	return HTMLTag::getRadioTag($entity,$roContainer->getNameTag($rsTitle),$roContainer->{$var},$rsClass,$raAnnos,$rsName);
 }
 function SAFETAG($rmVar,$riType=0,$rsNoneStr=null,$rbNoBr=false){
 	return HTMLTag::getSafeTag($rmVar,$riType,$rsNoneStr,$rbNoBr);

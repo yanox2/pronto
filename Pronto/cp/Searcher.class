@@ -40,8 +40,8 @@ class Searcher{
 	public function load(){
 		if(isset($_GET['kw'])){
 			$this->sKeywords_ = Misc::trim(urldecode($_GET['kw']));
-		}else if(isset($_POST[self::PREFIX.'Keywords'])){
-			$this->sKeywords_ = Misc::trim($_POST[self::PREFIX.'Keywords']);
+		}else if(HTTPUtil::isPost(self::PREFIX.'Keywords')){
+			$this->sKeywords_ = HTTPUtil::getPostValue(self::PREFIX.'Keywords',Model::DT_TEXT);
 		}else{
 			$this->sKeywords_ = Misc::trim($_SESSION[self::PREFIX.'Keywords']);
 		}
@@ -49,8 +49,8 @@ class Searcher{
 		foreach($this->aItems_ as $var=>$tag){
 			if(isset($_GET[$tag->sPost])){
 				$this->{$var} = Misc::trim(urldecode($_GET[$tag->sPost]));
-			}else if(isset($_POST[$tag->sPost])){
-				$this->{$var} = Misc::trim($_POST[$tag->sPost]);
+			}else if(HTTPUtil::isPost($tag->sPost)){
+				$this->{$var} = HTTPUtil::getPostValue($tag->sPost,Model::DT_TEXT);
 			}else{
 				$this->{$var} = Misc::trim($_SESSION[self::PREFIX.$var]);
 			}

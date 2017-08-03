@@ -12,9 +12,15 @@ class HTTPUtil{
  * URL関連
  *---------------------------------------------------------------------------*/
 	// URL
-	public static function isURL($rsStr){
-		if(preg_match("/^(https?|ftp)(:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)$/",$rsStr)){
-			return true;
+	public static function isURL($rsStr,$rbNoScheme=false){
+		if($rbNoScheme){
+			if(preg_match("/^[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+$/",$rsStr)){
+				return true;
+			}
+		}else{
+			if(preg_match("/^(https?|ftp)(:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)$/",$rsStr)){
+				return true;
+			}
 		}
 		return false;
 	}
@@ -136,6 +142,7 @@ class HTTPUtil{
 		  case Model::DT_TEL:
 		  case Model::DT_DATE:
 		  case Model::DT_DOMAIN:
+		  case Model::DT_LOGINID:
 			$value = mb_convert_kana($rsVal,'a');
 			break;
 		  case Model::DT_TEXT: // 全角かなカナ
@@ -148,13 +155,23 @@ class HTTPUtil{
 /*---------------------------------------------------------------------------*
  * Ajax関連
  *---------------------------------------------------------------------------*/
-	public static function resAjax($riCode,$rsMessage,$raRes=null){
+	public static function resAjax($riCode,$rsMessage,$raRes=null,$raHeaders=null){
 		if($raRes == null) $raRes = array();
 		$raRes['rcode'] = $riCode;
 		$raRes['message'] = $rsMessage;
-		$str  = $_GET['jcbk'].'(';
-		$str .= json_encode($raRes,JSON_UNESCAPED_UNICODE).')';
-		header('Content-Type: application/json');
+		$str='';$end='';
+		if(!empty($_GET['jcbk'])){
+			$str .= $_GET['jcbk'].'(';
+			$end = ')';
+		}
+		$str .= json_encode($raRes,JSON_UNESCAPED_UNICODE).$end;
+		if(empty($raHeaders)){
+			header('Content-Type: application/json');
+		}else{
+			foreach($raHeaders as $header){
+				header($header);
+			}
+		}
 		print $str;
 	}
 
@@ -372,6 +389,8 @@ class HTTPUtil{
 			if(preg_match('/^[a-zA-Z0-9]+$/',$rsStr)) return true;
 		}else if($riType == 2){
 			if(preg_match('/^[a-zA-Z0-9\.]+$/',$rsStr)) return true;
+		}else if($riType == 3){
+			if(preg_match('/^[a-zA-Z0-9\.@_!#$%\*\+\=-]+$/',$rsStr)) return true;
 		}
 		return false;
 	}
@@ -391,7 +410,7 @@ class HTTPUtil{
 
 	// パスワード書式チェック
 	public static function isPassword($rsStr,$riMinLen=0,$riMaxLen=0,$riKind=0){
-		preg_match("/[0-9a-zA-Z!#\$%\&'\*\+\/\=\?\^\|\-\{\}_\.]+/",$rsStr,$match);
+		preg_match('/^[a-zA-Z0-9\.@_!#$%\*\+\=-]+$/',$rsStr,$match);
 		if($match[0] != $rsStr) return C_PR_ERR_EINVAL;
 		if(($riMinLen > 0)&&(mb_strlen($rsStr) < $riMinLen)) return C_PR_ERR_ESHORT;
 		if(($riMaxLen > 0)&&(mb_strlen($rsStr) > $riMaxLen)) return C_PR_ERR_EOVER;

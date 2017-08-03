@@ -54,9 +54,13 @@ class Trace{
 		}else if(is_string($rmObj)){
 			$str = $rmObj;
 		}else if(is_array($rmObj)){
-			foreach($rmObj as $obj){
-				$str .= var_export($obj,true);
+			$sp='';
+			foreach($rmObj as $key=>$obj){
+				$str .= $sp.$key.'=>'.var_export($obj,true);
+				$sp=',';
 			}
+		}else{
+			$str = var_export($rmObj,true);
 		}
 		return $str;
 	}
@@ -131,7 +135,7 @@ class Trace{
 
 	public static function outAjax($rsMessage){
 		if(self::$iLevel__ == 0) return;
-		$raRes = array('rcode'=>-1,'message'=>urlencode($rsMessage));
+		$raRes = array('rcode'=>-1,'message'=>$rsMessage);
 		$str  = $_GET['jcbk'].'(';
 		$str .= json_encode($raRes,JSON_UNESCAPED_UNICODE).')';
 		header('Content-Type: application/json');
@@ -145,10 +149,10 @@ function ELOG($rmObj,$rbSql=false){
 function ELOGA($rmObj,$rbSql=false){
 	\PR\Trace::log(1,$rmObj,$rbSql);
 }
-function TRC($rmObj,$riLevel=-1,$rbSql=false,$bEnd=false){
+function TRC($rmObj,$riLevel=-1,$rbSql=false,$rbEnd=false){
 	\PR\Trace::trace(0,$rmObj,$riLevel,$rbSql,$rbEnd);
 }
-function TRCA($rmObj,$riLevel=-1,$raDbg=null,$rbSql=false,$bEnd=false){
+function TRCA($rmObj,$riLevel=-1,$rbSql=false,$rbEnd=false){
 	\PR\Trace::trace(1,$rmObj,$riLevel,$rbSql,$rbEnd);
 }
 

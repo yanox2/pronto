@@ -145,46 +145,7 @@ class ModelGenerator extends Batch{
 			$str .= ''."\n";
 		}
 		$str .= "\n";
-/*
-		// getArray
-		$str .= '	public function getArray($riType=\\PR\\Model::TYPE_PRIMARY,$rbTargetOnly=false){'."\n";
-		$str .= '		$array = array();'."\n";
-		$str .= '		if(($riType == \\PR\\Model::TYPE_ALL)||($riType == \\PR\\Model::TYPE_PRIMARY)){'."\n";
-		foreach($roBean->aPrimaryKeys as $var=>$col){
-			$str .= '			if((!$rbTargetOnly)||(in_array(\''.$var.'\',$this->aTargetVars))) $array[\''.$col.'\'] = $this->'.$var.";\n";
-		}
-		$str .= '		}'."\n";
-		$str .= '		if(($riType == \\PR\\Model::TYPE_ALL)||($riType == \\PR\\Model::TYPE_DATA)){'."\n";
-		foreach($roBean->aColumns as $col=>$inf){
-			if(!in_array($col,$roBean->aPrimaryKeys)){
-				$str .= '			if((!$rbTargetOnly)||(in_array(\''.$inf['var'].'\',$this->aTargetVars))) $array[\''.$col.'\'] = $this->'.$inf['var'].";\n";
-			}
-		}
-		$str .= '		}'."\n";
-		$str .= '		return $array;'."\n";
-		$str .= '	}'."\n";
-		$str .= ''."\n";
 
-		// setArray
-		$str .= '	public function setArray($raArray){'."\n";
-		foreach($roBean->aColumns as $col=>$inf){
-			$str .= '		if(array_key_exists(\''.$col.'\',$raArray)) $this->'.$inf['var'].' = $raArray[\''.$col.'\'];'."\n";
-		}
-		$str .= '	}'."\n";
-		$str .= ''."\n";
-
-		// post
-		$str .= '	public function post(){'."\n";
-		$str .= '		$this->aTargetVars = array();'."\n";
-		foreach($roBean->aColumns as $col=>$inf){
-			$type = $inf['type'];
-			$str .= '		if(isset($_POST[\''.$inf['post'].'\'])){'."\n";
-			$str .= '			$this->'.$inf['var'].' = \PR\HTTPUtil::getPostValue(\''.$inf['post'].'\','.$type.');'."\n";
-			$str .= '			$this->aTargetVars[] = \''.$inf['var'].'\';'."\n";
-			$str .= '		}'."\n";
-		}
-		$str .= '	}'."\n";
-*/
 		$str .= '}'."\n";
 		$str .= '?>'."\n";
 		$rc = $filer->writeFile($str);
@@ -342,15 +303,20 @@ class ModelGenerator extends Batch{
 			$typeStr = '\\PR\\Model::DT_DATE';
 		}else if($type == Model::DT_DOMAIN){
 			$typeStr = '\\PR\\Model::DT_DOMAIN';
+		}else if($type == Model::DT_LOGINID){
+			$typeStr = '\\PR\\Model::DT_LOGINID';
+		}else if($type == Model::DT_URI){
+			$typeStr = '\\PR\\Model::DT_URI';
 		}
 		return $typeStr;
 	}
 
 	private function _getKind($ins){
 		$kindStr = '\\PR\\Model::INS_NONE';
-		if($ins == 'Serial'){
+		$ins = mb_strtolower($ins);
+		if($ins == 'serial'){
 			$kindStr = '\\PR\\Model::INS_SERIAL';
-		}else if($ins == 'Unique'){
+		}else if($ins == 'unique'){
 			$kindStr = '\\PR\\Model::INS_UNIQUE';
 		}
 		return $kindStr;

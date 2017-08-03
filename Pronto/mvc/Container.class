@@ -8,6 +8,11 @@ namespace PR;
 
 class Container extends Model{
 
+	// get data type
+	const VARIABLE = 0;
+	const POST = 1;
+	const COLUMN = 2;
+
 	protected $aNameTags = array();
 	protected $aTargets = array();
 
@@ -16,7 +21,14 @@ class Container extends Model{
 	private $sTable_ = null;
 	private $aPrimaryKeys_ = null;
 	private $aInsKey_ = null;
-	private $sMyName_ = null;
+	//private $sMyName_ = null;
+
+	private $aVarNames_ = array('sVariable','sPost','sColumn');
+
+	public function __construct($roDao=null){
+		$this->aTargets = array();
+		parent::__construct($roDao);
+	}
 
 	public function setParameters($rsTable,$raPrimaryKeys,$raInsKey,$rsMyName=null){
 		$this->sTable_ = $rsTable;
@@ -41,7 +53,14 @@ class Container extends Model{
 		$this->oEntity_ = $roEntity;
 	}
 
-	public function newEntity(){
+	public function newEntity($rbNoClearTargets=false){
+		$path = SysEnv::getYourEntityFilePath();
+		if($path != '/'){
+			$cname = explode("\\", $this->sMyName_);
+			$this->oEntity_ = \PR\EntityFactory::createEntity(end($cname));
+			return $this->oEntity_;
+		}
+		if(!$rbNoClearTargets) $this->aTargets = array();
 		$class = $this->sMyName_.'Entity';
 		$this->oEntity_ = new $class;
 		return $this->oEntity_;
@@ -58,24 +77,30 @@ class Container extends Model{
 	public final function getNameTag($rsVar){
 		return $this->aNameTags[$rsVar];
 	}
-
+	
+	public final function setNameTags($aNameTags){
+		$this->aNameTags = $aNameTags;
+	}
+	
 	public final function getNameTags(){
 		return $this->aNameTags;
 	}
 
-	public function convTagsFromVar($raTags,$rsTo='sColumn'){
+	public function convTagsFromVar($raTags,$riTo=self::VARIABLE){
+		$toVar = $this->aVarNames_[$riTo];
 		$array = array();
 		foreach($raTags as $varTag){
-			$array[] = $this->aNameTags[$varTag]->{$rsTo};
+			$array[] = $this->aNameTags[$varTag]->{$toVar};
 		}
 		return $array;
 	}
 
-	public function convTagsToVar($raTags,$rsFrom='sColumn'){
+	public function convTagsToVar($raTags,$riFrom=self::VARIABLE){
+		$fromVar = $this->aVarNames_[$riFrom];
 		$array = array();
 		foreach($raTags as $tag){
 			foreach($this->aNameTags as $nametag){
-				if($tag == $nametag->{$rsFrom}){
+				if($tag == $nametag->{$fromVar}){
 					$array[] = $nametag->sVariable;
 					break;
 				}
@@ -84,21 +109,31 @@ class Container extends Model{
 		return $array;
 	}
 
+	public function getTargets(){
+		return $this->aTargets;
+	}
 	public function setTargets($raTargets){
 		$this->aTargets = $raTargets;
 	}
-
-	public function setTargetsByType($riType=Model::TYPE_ALL){
-		if($riType == Model::TYPE_PRIMARY){
-			$this->aTargets = $this->aPrimaryKeys_;
-		}else if($riType == Model::TYPE_ALL){
-			foreach($this->aNameTags as $var=>$val){
-				$this->aTargets[] = $var;
-			}
-		}else if($riType == Model::TYPE_DATA){
-			foreach($this->aNameTags as $var=>$val){
-				if(!in_array($var,$this->aPrimaryKeys_)) $this->aTargets[] = $var;
-			}
+	public function addTargets($raTargets){
+		$this->aTargets = array_merge($this->aTargets,$raTargets);
+	}
+	public function removeTargets($raTargets){
+		$this->aTargets = array_diff($this->aTargets,$raTargets);
+	}
+	public function targetPrimary(){
+		$this->aTargets = $this->aPrimaryKeys_;
+	}
+	public function targetAll(){
+		$this->aTargets = array();
+		foreach($this->aNameTags as $var=>$val){
+			$this->aTargets[] = $var;
+		}
+	}
+	public function targetData(){
+		$this->aTargets = array();
+		foreach($this->aNameTags as $var=>$val){
+			if(!in_array($var,$this->aPrimaryKeys_)) $this->aTargets[] = $var;
 		}
 	}
 
@@ -112,38 +147,45 @@ class Container extends Model{
 		}
 		return $html;
 	}
-
-	public function getTrTag($roEntity=null,$raTargets=null,$rsPFix='',$rsClass='',$rsStyle=''){
+	public function getTrTag($roEntity=null,$raTargets=null,$rsPFix='',$rsClass='',$rsStyle='',$rsStartStr=''){
 		$this->_getEntity($roEntity);
 		$target = $raTargets;
 		if(empty($target)) $target = $this->aTargets;
-		$html = '<tr>';
+		$html = '<tr style="display:none;">'.$rsStartStr;
 		foreach($target as $var){
-			$html .= '<td><div id="'.$rsPFix.$this->aNameTags[$var]->sVariable.'" class="'.$rsClass.'" style="display:none;'.$rsStyle.'">'
+			$html .= '<td><div id="'.$rsPFix.$this->aNameTags[$var]->sVariable.'" class="'.$rsClass.'" style="'.$rsStyle.'">'
 				.$this->oEntity_->{$var}.'</div></td>';
 		}
 		$html .= '</tr>'."\n";
+		return $html;
+	}
+	public function getFormTag($roEntity,$rsFormId,$rsAction,$rsName,$rsValue){
+		$this->_getEntity($roEntity);
+		$html = '<form id="'.$rsFormId.'" name="'.$rsFormId.'" method="post" action="'.$rsAction.'">'."\n"
+			.'<input type="hidden" name="'.$rsName.'" value="'.$rsValue.'">'."\n"
+			.'</form>'."\n";
 		return $html;
 	}
 
 /*---------------------------------------------------------------------------*
  * Relay Entity method
  *---------------------------------------------------------------------------*/
-	public function getArray($riType=Model::TYPE_ALL,$rsTo='sColumn',$rbNoTarget=false,$rsPFix=''){
+	public function getArray($riType=Model::TYPE_ALL,$riTo=self::VARIABLE,$rsPFix=''){
+		$toVar = $this->aVarNames_[$riTo];
 		$this->_getEntity();
 		$array = array();
 		foreach($this->aNameTags as $var=>$val){
 			if(in_array($var,$this->aPrimaryKeys_)){
 				if(($riType == Model::TYPE_ALL)||($riType == Model::TYPE_PRIMARY)){
-					if(($rbNoTarget)||(in_array($var,$this->aTargets))){
-						$key = $this->aNameTags[$var]->{$rsTo};
+					if(in_array($var,$this->aTargets)){
+						$key = $this->aNameTags[$var]->{$toVar};
 						$array[$rsPFix.$key] = $this->oEntity_->{$var};
 					}
 				}
 			}else{
 				if(($riType == Model::TYPE_ALL)||($riType == Model::TYPE_DATA)){
-					if(($rbNoTarget)||(in_array($var,$this->aTargets))){
-						$key = $this->aNameTags[$var]->{$rsTo};
+					if(in_array($var,$this->aTargets)){
+						$key = $this->aNameTags[$var]->{$toVar};
 						$array[$rsPFix.$key] = $this->oEntity_->{$var};
 					}
 				}
@@ -152,11 +194,28 @@ class Container extends Model{
 		return $array;
 	}
 
-	public function setArray($raArray,$riType=Model::TYPE_ALL,$rsFrom='sColumn'){
+	public function getArrayX($raTargets,$riTo=self::VARIABLE,$rsPFix=''){
+		$toVar = $this->aVarNames_[$riTo];
+		$this->_getEntity();
+		$array = array();
+		foreach($this->aNameTags as $var=>$val){
+			if(in_array($var,$raTargets)){
+				$key = $this->aNameTags[$var]->{$toVar};
+				$array[$rsPFix.$key] = $this->oEntity_->{$var};
+			}
+		}
+		return $array;
+	}
+
+	public function setArray($raArray,$riFrom=self::VARIABLE,$rbNoTarget=false){
+		$fromVar = $this->aVarNames_[$riFrom];
 		$this->_getEntity();
 		foreach($this->aNameTags as $var=>$val){
-			$key = $this->aNameTags[$var]->{$rsFrom};
-			if(array_key_exists($key,$raArray)) $this->oEntity_->{$var} = $raArray[$key];
+			$key = $this->aNameTags[$var]->{$fromVar};
+			if(array_key_exists($key,$raArray)){
+				$this->oEntity_->{$var} = $raArray[$key];
+				if(!$rbNoTarget) $this->aTargets[] = $var;
+			}
 		}
 	}
 
@@ -165,9 +224,20 @@ class Container extends Model{
 		foreach($this->aNameTags as $var=>$val){
 			$key = $this->aNameTags[$var]->sPost;
 			$type = $this->aNameTags[$var]->iType;
-			if(isset($_POST[$key])){
+			if(HTTPUtil::isPost($key)){
 				$this->oEntity_->{$var} = HTTPUtil::getPostValue($key,$type);
 				$this->aTargets[] = $var;
+			}
+		}
+	}
+
+	public function mergeEntity($roCntr,$rbTarget=false){
+		$me = $this->_getEntity();
+		$other = $roCntr->getEntity();
+		foreach($this->aNameTags as $var=>$val){
+			if(array_key_exists($var,$roCntr->aNameTags)){
+				$me->{$var} = $other->{$var};
+				if($rbTarget) $this->aTargets[] = $var;
 			}
 		}
 	}
@@ -195,7 +265,6 @@ class Container extends Model{
 		return $msg;
 	}
 
-	// Override
 	public function checkPostX($rsVar,$rbAccEmpty=false){
 		$this->_getEntity();
 		$tag = $this->aNameTags[$rsVar];
@@ -249,34 +318,39 @@ class Container extends Model{
 /*---------------------------------------------------------------------------*
  * Dao select
  *---------------------------------------------------------------------------*/
-	public function hasX($raWheres=null,$rsToken=null){
-		$aWheres = $this->_getWheres($raWheres);
+	public function hasX($raWhereTgs=null,$rsToken=null){
+		//$aWheres = $this->_getArray($raWhereTgs,Model::TYPE_PRIMARY);
+		$aWheres = $this->_getArray($raWhereTgs);
 		$rc = $this->has($this->sTable_,$aWheres,$rsToken);
 		return $rc;
 	}
 
-	public function numX($raWheres=null,$rsToken=null){
-		$aWheres = $this->_getWheres($raWheres);
+	public function numX($raWhereTgs=null,$rsToken=null){
+		//$aWheres = $this->_getArray($raWhereTgs,Model::TYPE_PRIMARY);
+		$aWheres = $this->_getArray($raWhereTgs);
 		$rc = $this->num($this->sTable_,$aWheres,$rsToken);
 		return $rc;
 	}
 
-	public function readX($raWheres=null,$rsToken=null,$raSels=null){
-		$aWheres = $this->_getWheres($raWheres);
+	public function readX($raWhereTgs=null,$rsToken=null,$raSels=null){
+		//$aWheres = $this->_getArray($raWhereTgs,Model::TYPE_PRIMARY);
+		$aWheres = $this->_getArray($raWhereTgs);
 		$rc = $this->read($this->sTable_,$aWheres,$rsToken,$raSels);
 		if($rc != 0) return $rc;
 		$this->oEntity_ = $this->aResults[0];
 		return 0;
 	}
 
-	public function pageX($raWheres=null,$rsToken=null,$raSels=null){
-		$aWheres = $this->_getWheres($raWheres);
+	public function pageX($raWhereTgs=null,$rsToken=null,$raSels=null){
+		//$aWheres = $this->_getArray($raWhereTgs,Model::TYPE_PRIMARY);
+		$aWheres = $this->_getArray($raWhereTgs);
 		$rc = $this->page($this->sTable_,$aWheres,$rsToken,$raSels);
 		return $rc;
 	}
 
-	public function listsX($raWheres=null,$rsToken=null,$raSels=null,$riType=Model::IDX_SERIAL,$raIndex=null,$roPager=null,$roSearcher=null){
-		$aWheres = $this->_getWheres($raWheres);
+	public function listsX($raWhereTgs=null,$rsToken=null,$raSels=null,$riType=Model::IDX_SERIAL,$raIndex=null,$roPager=null,$roSearcher=null){
+		//$aWheres = $this->_getArray($raWhereTgs,Model::TYPE_PRIMARY);
+		$aWheres = $this->_getArray($raWhereTgs);
 		$rc = $this->lists($this->sTable_,$aWheres,$rsToken,$raSels,$riType,$raIndex,$roPager,$roSearcher);
 		return $rc;
 	}
@@ -286,15 +360,21 @@ class Container extends Model{
  *---------------------------------------------------------------------------*/
 	public function addX($roListener=null){
 		$this->_getEntity();
-		$aSets = $this->getArray(Model::TYPE_DATA,'sColumn',true);
-		$aWheres = $this->getArray(Model::TYPE_PRIMARY,'sColumn',true);
+		$this->targetAll();
+		$aSets = $this->_getArray(null,Model::TYPE_DATA);
+		$aWheres = $this->_getArray(null,Model::TYPE_PRIMARY);
 		$rc = $this->add($this->sTable_,$aSets,$aWheres,$this->aInsKey_,$roListener);
-		return $rc;
+		if($rc != 0) return $rc;
+
+		$key = key($this->aInsKey_);
+		$this->setArray(array($key=>$this->sInsKeyVal),self::COLUMN,true);
+		return 0;
 	}
 
-	public function removeX($rsToken=null){
+	public function removeX($raWhereTgs=null,$rsToken=null){
 		$this->_getEntity();
-		$aWheres = $this->getArray(Model::TYPE_PRIMARY);
+		//$aWheres = $this->_getArray($raWhereTgs,Model::TYPE_PRIMARY);
+		$aWheres = $this->_getArray($raWhereTgs);
 		if(empty($aWheres)){
 			$this->errorOccured(C_PR_ERR_ENOENT,'PR_E020','removeX');
 			return C_PR_ERR_ENOENT;
@@ -303,10 +383,10 @@ class Container extends Model{
 		return $rc;
 	}
 
-	public function updateX($rsToken=null){
+	public function updateX($raSetTgs=null,$raWhereTgs=null,$rsToken=null){
 		$this->_getEntity();
-		$aSets = $this->getArray(Model::TYPE_DATA);
-		$aWheres = $this->getArray(Model::TYPE_PRIMARY);
+		$aSets = $this->_getArray($raSetTgs,Model::TYPE_DATA);
+		$aWheres = $this->_getArray($raWhereTgs,Model::TYPE_PRIMARY);
 		if(empty($aSets)){
 			$this->errorOccured(C_PR_ERR_ENOENT,'PR_E020','updateX1');
 			return C_PR_ERR_ENOENT;
@@ -328,8 +408,8 @@ class Container extends Model{
 			$this->errorOccured(C_PR_ERR_EPARAM,'PR_E011','raRecord is null.');
 			return C_PR_ERR_EPARAM;
 		}
-		$entity = $this->newEntity;
-		$this->setArray($raRecord);
+		$entity = $this->newEntity(true);
+		$this->setArray($raRecord,self::COLUMN,true);
 
 		if($riType == Model::IDX_SERIAL){
 			$this->aResults[] = $entity;
@@ -372,13 +452,14 @@ class Container extends Model{
 		return $entity;
 	}
 
-	private function _getWheres($raWheres){
-		$aWheres = $raWheres;
-		if($raWheres === null){
-			$this->_getEntity();
-			$aWheres = $this->getArray(Model::TYPE_ALL);
+	private function _getArray($raTargets,$riType=Model::TYPE_ALL){
+		$array = null;
+		if($raTargets === null){
+			$array = $this->getArray($riType,self::COLUMN);
+		}else{
+			$array = $this->getArrayX($raTargets,self::COLUMN);
 		}
-		return $aWheres;
+		return $array;
 	}
 }
 ?>

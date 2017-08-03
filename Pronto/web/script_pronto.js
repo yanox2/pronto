@@ -153,43 +153,146 @@ var PRIndicator = {
 	}
 };
 
-// Ajaxフォーム基底クラス
-var PRFormAjax = {
-
+// Ajaxクラス
+var PRAjax = {
 	// variables
 	indicator_: null,
 	formId_: null, // <form>のID
-	showId_: null, // Active/InActiveとなるフォームエリアのID
-	current_: null, // カレントリスナ
-	submitId_: null, // submitされたID
+	isJSONP_: false, // JSONP
 	hasFile_: false, // ファイルアップロード
-	state_: 0,
 
-	// override methods (your implementation)
-	// abstract:フォームアクティブ
-	active: function(){
-		//$("#"+this.showId_).modal("show");
-		//$("#"+this.showId_).display = "block";
-	},
-
-	// abstract:フォームインアクティブ
-	inactive: function(){
-		//$("#"+this.showId_).modal("none");
-		//$("#"+this.showId_).display = "none";
-	},
+	callback_: null,
 
 	// public methods
 	// 初期処理
 	init: function(param){
 		this.indicator_ = Object.create(PRIndicator);
 		this.formId_ = param.formId;
-		if(param.showId) this.showId_ = param.showId;
+		if(param.isJSONP) this.isJSONP_ = param.isJSONP;
 		if(param.hasFile) this.hasFile_ = param.hasFile;
 	},
 
 	// インジケータ設定
 	setIndicator: function(indicator){
 		this.indicator_ = indicator;
+	},
+
+	// 非同期コールバック設定
+	setCallback: function(cb){
+		this.callback_ = cb;
+	},
+
+	get: function(){
+	},
+
+	post: function(submitId){
+		$async = true;
+		if(this.callback_ == null) $async = false;
+		this.indicator_.enable();
+		$form = $("#" + this.formId_);
+		var data = $form.serialize();
+		if(submitId) data += "&submitId=" + submitId;
+		var param = {url:$form.attr("action"),type:$form.attr("method"),async:$async,cache:false,timeout:30000,context:this};
+		if(this.isJSONP){
+			param = Object.assign(param,{dataType:"jsonp",jsonp:"jcbk"});
+		}else{
+			param = Object.assign(param,{dataType:"json"});
+		}
+		if(this.hasFile_){
+			var fd = new FormData($form[0]);
+			fd.append("submitId",submitId);
+			param = Object.assign(param,{contentType:false,processData:false,data:fd});
+		}else{
+			param = Object.assign(param,{data:data});
+		}
+		var rvals = new Array(3);
+		$.ajax(param).done(function(res,status,xhr){
+			this.indicator_.disable(true);
+			if(res.message) pr_alert(res.message);
+			if(res.confirm){
+				if(!window.confirm(res.confirm)) return;
+			}
+			if(res.location !== undefined){
+				window.location.href = res.location;
+				return;
+			}
+			this.indicator_.unmask();
+			rvals = [status,res,null];
+			if(this.callback_ != null) this.callback_(rvals);
+
+		}).fail(function(xhr,status,error){
+			this.indicator_.disable();
+			var msg = "システムとの通信中にエラーが発生しました。";
+			msg += " (" + xhr.status + " " + status + " " + error.message + ")";
+			this._error(-1,msg);
+			rvals = [status,null,error];
+			if(this.callback_ != null) this.callback_(rvals);
+
+		}).always(function(xhr,status,error){
+			this.indicator_.disable();
+		});
+		if(this.callback_ == null) return rvals;
+	},
+
+	// private methods
+	// エラー処理
+	_error: function(rc,msg){
+		pr_alert(msg + " code=" + rc);
+		//button.attr("disabled",true);
+		//$form = $(this);
+		//button.removeAttr("disabled");
+	}
+};
+
+// Ajaxフォーム基底クラス
+var PRFormAjax = {
+	// variables
+	ajax_: null,
+	formId_: null, // <form>のID
+	actId_: null, // フォームをActiveにするID
+	showId_: null, // Active/InActiveとなるフォームエリアのID
+	async_: true, // true:非同期 false:同期
+	current_: null, // カレントリスナ
+	submitId_: null, // submitされたID
+	state_: 0,
+	lis_: null,
+
+	// override methods (your implementation)
+	// abstract:フォームアクティブ
+	active: function(){
+		if(!this.showId_) return;
+		if($("#"+this.showId_).get(0)){
+			$("#"+this.showId_).css({"display":"block"});
+			//$("#"+this.showId_).modal("show");
+		}
+	},
+
+	// abstract:フォームインアクティブ
+	inactive: function(){
+		if(!this.showId_) return;
+		if($("#"+this.showId_).get(0)){
+			$("#"+this.showId_).css({"display":"none"});
+			//$("#"+this.showId_).modal("none");
+		}
+	},
+
+	// public methods
+	// 初期処理
+	init: function(param){
+		this.formId_ = param.formId;
+		if(param.actId) this.actId_ = param.actId;
+		if(param.showId) this.showId_ = param.showId;
+		if(param.async) this.async_ = param.async;
+		var hasFile = false;
+		if(param.hasFile) hasFile = param.hasFile;
+		this.ajax_ = Object.create(PRAjax,{"formId":param.formId,"hasFile":hasFile});
+		var lis = Object.create(PRFormAjaxListener,{"actId":this.actId_});
+		this.addListener(lis);
+	},
+
+	// インジケータ設定
+	setIndicator: function(indicator){
+		this.ajax_.setIndicator(indicator);
 	},
 
 	// submitボタンの追加
@@ -218,13 +321,38 @@ var PRFormAjax = {
 				var me = e.data.me;
 				var lis = listener;
 				if(lis.state == 0) return;
-				lis.show(e);
-				me.active();
-				me.current_ = lis;
-				me.state_ = 1;
+
+				if(lis.async){ // 非同期
+					if(lis.reqId){
+						var cb = me.callback.bind(me);
+						lis.setCallback(cb);
+						lis.request(e);
+					}else{
+						lis.show();
+						me.active();
+						me.current_ = lis;
+						me.state_ = 1;
+					}
+					me.lis_ = lis;
+				}else{ // 同期
+					var res = null;
+					if(lis.reqId){
+						var rvals = lis.request(e);
+						if(rvals[0] != "success"){
+							lis.onError(rvals[2]);
+							return;
+						}
+						res = rvals[1];
+					}
+					lis.show(res);
+					me.active();
+					me.current_ = lis;
+					me.state_ = 1;
+				}
 				return false; // e.preventDefault() & e.stopPropagation()
 			});
 			$(document).click({me:this},function(e){
+				if(!me) return;
 				var me = e.data.me;
 				if(me.state_ == 1){
 					me.inactive();
@@ -242,6 +370,19 @@ var PRFormAjax = {
 		}
 	},
 
+	// request callback
+	callback: function(rvals){
+		if(rvals[0] != "success"){
+			lis.onError(rvals[2]);
+			return;
+		}
+		var res = rvals[1];
+		this.lis_.show(res);
+		this.active();
+		this.current_ = this.lis_;
+		this.state_ = 1;
+	},
+
 	// submit処理
 	listen: function(){
 		$("#"+this.formId_).submit({me:this},function(e){
@@ -257,62 +398,54 @@ var PRFormAjax = {
 				if(!window.confirm(msg)) return false;
 			}
 			if(lis.state == 2) return;
-			me.indicator_.enable();
-			$form = $(this);
-			var data = $form.serialize();
-			data += "&submitId=" + submitId;
-			var param = {url:$form.attr("action"),type:$form.attr("method"),async:false,cache:false,timeout:30000,dataType:"jsonp",jsonp:"jcbk",data:data};
-			if(me.hasFile_){
-				var fd = new FormData($form[0]);
-				fd.append("submitId",submitId);
-				param = {contentType:false,processData:false,url:$form.attr("action"),type:$form.attr("method"),async:false,cache:false,timeout:30000,dataType:"jsonp",jsonp:"jcbk",data:fd};
-			}
-			$.ajax(param).done(function(res,status,xhr){
-				me.indicator_.disable(true);
-				lis.after(res);
-				if(res.message != "") pr_alert(res.message);
-				if(res.confirm){
-					if(!window.confirm(res.confirm)) return;
-				}
-				if(!res.stay) me.inactive();
-				if(res.location !== undefined){
-					window.location.href = res.location;
-					return;
-				}
-				me.indicator_.unmask();
 
-			}).fail(function(xhr,status,error){
-				me.indicator_.disable();
-				var msg = "システムとの通信中にエラーが発生しました。";
-				msg += " (" + xhr.status + " " + status + " " + error.message + ")";
-				me._error(-1,msg);
-				lis.onError(error);
-			}).always(function(xhr,status,error){
-				me.indicator_.disable();
-			});
+			if(me.async_){
+				var cb = me._callback.bind(me);
+				me.ajax_.setCallback(cb);
+				me.ajax_.post(submitId);
+				me.lis_ = lis;
+			}else{
+				var rvals = me.ajax_.post(submitId);
+				if(rvals[0] == "success"){
+					var res = rvals[1];
+					lis.after(res);
+					if((res.rcode == 0)&&(!res.stay)) me.inactive();
+				}else{
+					lis.onError(rvals[2]);
+				}
+			}
 		});
 	},
 
 	// private methods
+	// submit callback
+	_callback: function(rvals){
+		if(rvals[0] == "success"){
+			var res = rvals[1];
+			this.lis_.after(res);
+			if((res.rcode == 0)&&(!res.stay)) this.inactive();
+		}else{
+			this.lis_.onError(rvals[2]);
+		}
+	},
+
 	// エラー処理
 	_error: function(rc,msg){
-		pr_alert(msg + " code=" + rc);
-		//button.attr("disabled",true);
-		//$form = $(this);
-		//button.removeAttr("disabled");
 	}
 };
 
 // AjaxフォームリスナーInterface
 var PRFormAjaxListenerInf = {
-
 	// variables
 	actId: null, // フォームをアクティブにするID
+	reqId: null, // リクエスト用フォームのID
 	state: 1, // 0:inactive（何もしない） 1:active 2:no submit
+	async: true, // true:非同期 false:同期
 	items: null, // 送信データ（JSON）
 
 	// override methods (your implementation)
 	getMessage: function(msg){}, // 確認メッセージの取得
+	request: function(event){}, // フォームデータリクエスト
 	show: function(event){}, // フォーム表示
 	before: function(event,submitId){}, // 送信前処理
 	after: function(res){}, // 送信後処理
@@ -320,6 +453,7 @@ var PRFormAjaxListenerInf = {
 
 	// public methods
 	init: function(param){}, // 初期処理
+	setCallback: function(cb){}, // 非同期コールバック
 
 	// private methods
 	_show: function(){}, // フォームデータ埋め込み
@@ -328,19 +462,31 @@ var PRFormAjaxListenerInf = {
 
 // Ajaxフォームリスナー基底クラス
 var PRFormAjaxListener = {
-
+	// variables
 	actId: null,
+	reqId: null,
 	state: 1,
-	items: null,
+	async: true,
+	dom: null,
+
+	ajax_: null,
+	callback_: null,
 
 	// 確認メッセージの取得
 	getMessage: function(submitId){
 		return null;
 	},
 
+	// データリクエスト
+	request: function(event){
+		var rvals = this._request();
+		return rvals;
+	},
+
 	// フォーム表示
-	show: function(event){
-		this._show();
+	show: function(res){
+		if(this.dom) this._domUpdate(this.dom);
+		if((res)&&(res.dom)) this._domUpdate(res.dom);
 	},
 
 	// 送信前処理
@@ -350,7 +496,7 @@ var PRFormAjaxListener = {
 
 	// 送信後処理
 	after: function(res){
-		this._after(res);
+		if(res.dom) this._domUpdate(res.dom);
 	},
 
 	// エラー処理
@@ -359,8 +505,10 @@ var PRFormAjaxListener = {
 
 	init: function(param){
 		if(param.actId) this.actId = param.actId;
+		if(param.reqId) this.reqId = param.reqId;
 		if(param.state) this.state = param.state;
-		if(param.items) this.items = param.items;
+		if(param.async) this.async = param.async;
+		if(param.dom) this.dom = param.dom;
 		if(param.hover){
 			$("#"+this.actId).hover(
 				function(e){
@@ -371,61 +519,87 @@ var PRFormAjaxListener = {
 				}
 			);
 		}
+		if(param.reqId) this.ajax_ = Object.create(PRAjax,{"formId":param.reqId});
 	},
 
-	_show: function(){
-		if(!this.items) return;
-		for(var id in this.items){
-			var value = this.items[id];
-			var ele = $("#"+id);
-			if(ele.size() == 0){
-				ele = $("input[name="+id+"]");
-				if(ele.size() == 0) continue;
-				ele.val([value]);
-				continue;
-			}
-			if(ele.get(0).tagName == "INPUT"){
-				ele.val(value);
-			}else if(ele.get(0).tagName == "TD"){
-				ele.html(value);
-			}else{
-				ele.html(value);
-			}
+	// 非同期コールバック設定
+	setCallback: function(cb){
+		this.callback_ = cb;
+	},
+
+	_request: function(){
+		if(this.async){
+			var cb = this._callback.bind(this);
+			this.ajax_.setCallback(cb);
+			this.ajax_.post();
+		}else{
+			var rvals = this.ajax_.post();
+			return rvals;
 		}
+	},
+
+	_callback: function(rvals){
+		this.callback_(rvals);
 	},
 
 	// res:{dom:{append:{},prepend:{},after:{},before:{},replace:{},remove:{}}};
-	_after: function(res){
-		if(!res.dom) return;
-		if(res.dom.append){ // idの中にlastIn
-			$.each(res.dom.append,function(id,tag){
-				$("#"+id).append(tag);
-				if($("td div").is(":hidden")) $("td div").slideDown("fast");
+	_domUpdate: function(dom){
+		if(dom.append){ // idの中にlastIn
+			$.each(dom.append,function(id,tag){
+				var ele = pr_getElementByIdName(id);
+				if(ele){
+					ele.append(tag);
+					ele.children().slideDown();
+				}
 			});
 		}
-		if(res.dom.prepend){ // idの中にfirstIn
-			$.each(res.dom.prepend,function(id,tag){
-				$("#"+id).prepend(tag);
-				if($("td div").is(":hidden")) $("td div").slideDown("fast");
+		if(dom.prepend){ // idの中にfirstIn
+			$.each(dom.prepend,function(id,tag){
+				var ele = pr_getElementByIdName(id);
+				if(ele){
+					ele.prepend(tag);
+					ele.children().slideDown();
+				}
 			});
 		}
-		if(res.dom.after){ // idの直下に追加
-			$.each(res.dom.after,function(id,tag){ $("#"+id).after(tag); });
+		if(dom.after){ // idの直下に追加
+			$.each(dom.after,function(id,tag){
+				var ele = pr_getElementByIdName(id);
+				if(ele) ele.after(tag);
+			});
 		}
-		if(res.dom.before){ // idの直前に追加
-			$.each(res.dom.before,function(id,tag){ $("#"+id).before(tag); });
+		if(dom.before){ // idの直前に追加
+			$.each(res.dom.before,function(id,tag){
+				var ele = pr_getElementByIdName(id);
+				if(ele) ele.before(tag);
+			});
 		}
-		if(res.dom.replace){ // idの中を更新
-			//$.each(res.dom.replace,function(id,tag){ $("#"+id).replaceWith(tag); });
-			$.each(res.dom.replace,function(id,tag){ $("#"+id).html(tag); });
+		if(dom.replace){ // idの中を更新
+			//$.each(dom.replace,function(id,tag){ $("#"+id).replaceWith(tag); });
+			$.each(dom.replace,function(id,tag){
+				var ele = pr_getElementByIdName(id);
+				if(ele){
+					if(ele.get(0).tagName == "INPUT"){
+						ele.val(tag);
+					}else{
+						ele.html(tag);
+					}
+				}
+			});
 		}
-		if(res.dom.remove){ // idを無効化
-			$.each(res.dom.remove,function(id,tag){ $("#"+id).addClass("dfade"); });
+		if(dom.remove){ // idを無効化
+			$.each(dom.remove,function(id,tag){
+				var ele = pr_getElementByIdName(id);
+				if(ele) ele.addClass("dfade");
+			});
 			this.state = 0;
 		}
-		if(res.dom.removef){ // idを削除
-			$("#"+this.actId).unbind();
-			$.each(res.dom.removef,function(id,tag){ $("#"+id).remove(); });
+		if(dom.removef){ // idを削除
+			if($("#"+this.actId).get(0)) $("#"+this.actId).unbind();
+			$.each(dom.removef,function(id,tag){
+				var ele = pr_getElementByIdName(id);
+				if(ele) ele.remove();
+			});
 			this.state = 0;
 		}
 	}
@@ -434,6 +608,16 @@ var PRFormAjaxListener = {
 // var MyListener = $.extend({},PRFormAjaxListener,Template);
 // itemsの例
 // items:{"post_UserId":"5","post_Name":"test5","post_EMail":"test5@test.co.jp","post_Attr1":""}
+
+function pr_getElementByIdName(id){
+	var ele = $("#"+id);
+	if(!ele.get(0)){
+		ele = $("[name="+id+"]");
+		//ele = $("input[name="+id+"]");
+		if(!ele.get(0)) return null;
+	}
+	return ele;
+}
 
 /*---------------------------------------------------------------------------*
  * メッセージ - function
@@ -568,4 +752,30 @@ function pr_getMouseCoordinates(evt){
 	pos[1] = y;
 
 	return pos;
+}
+
+/*---------------------------------------------------------------------------*
+ * Misc - function
+ *---------------------------------------------------------------------------*/
+// htmlspecialchars
+function pr_htmlspecialchars(ch){
+	ch = ch.replace(/&/g,"&amp;");
+	ch = ch.replace(/"/g,"&quot;");
+	ch = ch.replace(/'/g,"&#039;");
+	ch = ch.replace(/</g,"&lt;");
+	ch = ch.replace(/>/g,"&gt;");
+	return ch ;
+}
+
+function pr_showBlock(id){
+	var idc = id + "_contents";
+	if(document.getElementById){
+		if($("#"+idc).css("display") == "none"){
+			$("#"+idc).css({"display":"block"});
+			if($("#"+id)) $("#"+id).html("－");
+		}else{
+			$("#"+idc).css({"display":"none"});
+			if($("#"+id)) $("#"+id).html("＋");
+		}
+	}
 }

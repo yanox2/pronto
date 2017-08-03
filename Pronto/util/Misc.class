@@ -150,6 +150,39 @@ class Misc{
 	}
 
 /*---------------------------------------------------------------------------*
+ * その他
+ *---------------------------------------------------------------------------*/
+	public function encode($roObj,$raVars){
+		foreach($raVars as $var=>$key){
+			if(!Misc::hasProp($roObj,$var)) continue;
+			if(!empty($roObj->{$var})) $roObj->{$var} = \PR\Crypt::encrypt($roObj->{$var},$key);
+		}
+	}
+
+	public function decode($roObj,$raVars){
+		foreach($raVars as $var=>$key){
+			if(!Misc::hasProp($roObj,$var)) continue;
+			if(!empty($roObj->{$var})) $roObj->{$var} = \PR\Crypt::decrypt($roObj->{$var},$key);
+		}
+	}
+
+	public static function hasProp($roObj,$rsVar){
+		if(property_exists($roObj,$rsVar)) return true;
+		ELOG(SMSG('PR_E021',$roObj,$rsVar));
+		return false;
+	}
+
+	public static function getOneTimeSes($rsName){
+		$data = $_SESSION[C_PR_PREFIX_SESSION.$rsName];
+		unset($_SESSION[C_PR_PREFIX_SESSION.$rsName]);
+		return $data;
+	}
+
+	public function setOneTimeSes($rsName,$rmData){
+		$_SESSION[C_PR_PREFIX_SESSION.$rsName] = $rmData;
+	}
+
+/*---------------------------------------------------------------------------*
  * ゴミ
  *---------------------------------------------------------------------------*/
 /*

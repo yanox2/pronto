@@ -234,34 +234,62 @@ class Filer{
 		return 0;
 	}
 
-	public static function upload($rsPostName,$rsFile,$riMaxSize=2,$rbCSV=false){
+	public static function makePath($rsPath,$mode=0777){
+		$dirs = explode('/',$rsPath);
+		if(count(dirs) == 0) return 0;
+		$path = '';
+		foreach($dirs as $dir){
+			if(empty($dir)) continue;
+			$path .= '/'.$dir;
+			if(!file_exists($path)){
+				$rc = mkdir($path,$mode);
+				if(!$rc) return C_PR_ERR_ESYSTEM;
+			}
+		}
+		return 0;
+	}
+
+	public static function checkUpload($rsPostName,$riMaxSize=2,$riType=0){
 		$postFile = $_FILES[$rsPostName]['name'];
 		$tmpFile = $_FILES[$rsPostName]['tmp_name'];
 		$size = $_FILES[$rsPostName]['size'];
 		$error = $_FILES[$rsPostName]['error'];
 
-		$msg = '';
+		$rc = 0;
 		if($size == 0){
-			$msg = 'CSVファイルを選択してください。';
+			$rc = C_PR_ERR_ENOENT;
 		}else if($size > $riMaxSize*1048576){
-			$msg = 'CSVファイルが大きすぎます。'.$riMaxSize.'Mbyte 以内にしてください。';
+			//$msg = 'ファイルが大きすぎます。'.$riMaxSize.'Mbyte 以内にしてください。';
+			$rc = C_PR_ERR_EOVER;
 		}
-		if((empty($msg))&&($rbCSV)){
+		if(($rc == 0)&&($riType)){
 			$ext = self::getFileExt($postFile);
 			$ext = strtolower($ext);
-			if($ext != 'csv'){
-				$msg = 'ファイルの拡張子に誤りがあります。読み込むファイルの拡張子は、.csvを指定してください。'."\n";
-				$msg .= '（通常、CSV形式のファイルは拡張子が.csvになります）';
+			if($riType == 1){ // CSV
+				if($ext != 'csv'){
+					//$msg = 'ファイルの拡張子に誤りがあります。読み込むファイルの拡張子は、.csvを指定してください。'."\n";
+					//$msg .= '（通常、CSV形式のファイルは拡張子が.csvになります）';
+					$rc = C_PR_ERR_EPARAM;
+				}
+			}else if($riType == 2){ // image
+				$imgExts = array('gif','jpg','jpeg','png');
+				if(!in_array($ext,$imgExts)){
+					//$msg = 'ファイルの拡張子に誤りがあります。読み込むファイルの拡張子は、.gif .jpg .jpeg .pngを指定してください。'."\n";
+					$rc = C_PR_ERR_EPARAM;
+				}
 			}
 		}
-		if(!empty($msg)) return $msg;
+		return $rc;
+	}
 
+	public static function upload($rsPostName,$rsFile){
 		$upFile = $_FILES[$rsPostName]['tmp_name'];
 		$rc = move_uploaded_file($upFile,$rsFile);
 		if($rc === false){
-			$msg = 'ファイルのアップロードに失敗しました。時間をおいて、再度実行してください。';
+			//$msg = 'ファイルのアップロードに失敗しました。時間をおいて、再度実行してください。';
+			$rc = C_PR_ERR_ESYSTEM;
 		}
-		return $msg;
+		return 0;
 	}
 
 	// ファイルのダウンロード
@@ -280,6 +308,12 @@ class Filer{
 		header("Content-Length: ".$size);
 		header("Content-Type: application/octet-stream");
 		readfile($path);
+	}
+
+	public static function getContentType($rsPath=null){
+		$info = new \FInfo(FILEINFO_MIME_TYPE);
+		$mime = $info->file($rsPath);
+		return $mime;
 	}
 
 /*---------------------------------------------------------------------------*

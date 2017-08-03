@@ -11,59 +11,102 @@ class EntityFactory{
 	private static $aContainers__ = array();
 	private static $aEntities__ = array();
 
-	public static function createContainer($rsName=null){
-		if(!array_key_exists($rsName,$this->aContainers)){
-			$cntr = $this->newContainer($rsName);
-			$entity = $this->newEntity($rsName);
+	public static function createContainer($rsName=null, $dao=null){
+		if(!array_key_exists($rsName,self::$aContainers__)){
+			$cntr = self::newContainer($rsName, $dao);
+			//$entity = self::newEntity($rsName);
 			self::$aContainers__[$rsName] = $cntr;
-			self::$aEntities__[$rsName] = $entity;
+			//self::$aContainers__[$rsName]->setEntity($entity);
+			//self::$aEntities__[$rsName] = $entity;
 		}
 		$obj = clone self::$aContainers__[$rsName];
 		return $obj;
 	}
 
-	public static function createEntity($rsName=null){
-		if(!array_key_exists($rsName,$this->aEntities)){
-			$cntr = $this->newContainer($rsName);
-			$entity = $this->newEntity($rsName);
-			self::$aContainers__[$rsName] = $cntr;
+	public static function createEntity($rsName=null, $dao=null){
+		if(!array_key_exists($rsName,self::$aEntities__)){
+			if(!array_key_exists($rsName,self::$aContainers__)){
+				$cntr = self::newContainer($rsName, $dao);
+			}
+			else {
+				$cntr = self::$aContainers__[$rsName];
+				self::$aContainers__[$rsName] = $cntr;
+			}
+			$entity = self::newEntity($rsName);
+			//self::$aContainers__[$rsName]->setEntity($entity);
 			self::$aEntities__[$rsName] = $entity;
 		}
 		$obj = clone self::$aEntities__[$rsName];
 		return $obj;
 	}
 
-	public static function newContainer($rsName){
-		$cntr = new Container($rsName);
-
-		foreach(){
-			array
+	public static function newContainer($rsName, $dao=null){
+		self::_readFile();
+		if(empty(self::$aClasses_)){
+			throw new Exception(C_PR_ERR_ENOENT,SMSG('PR_E018','readFile'));
 		}
+		$cntr = new Container($dao);
 
-		$cntr->setParameters($table,$pkeys,$inskey,$myname);
+		$cls = self::$aClasses_[$rsName];
+		$tags = array();
+		$targets = array();
+		$inskey = array();
+		$myname = self::$sNameSpace_ . '\\' . $cls->sClass;
+		foreach($cls->aColumns as $key => $value) {
+			$tp = explode('::', $value['type']);
+			$tags[$value['var']] = new \PR\NameTag($value['var'], $value['post'], $key, $value['name'], constant($tp[0] . '::' . $tp[1]));
+			$targets[] = $value['var'];
+			if(array_key_exists('ins', $value)){
+				$ins = explode('::', $value['ins']);
+				$inskey[$key] = constant($ins[0] . '::' . $ins[1]);
+			}
+		}
+		
+		$primarykeys = array();
+		foreach($cls->aPrimaryKeys as $var=>$col){
+			$primarykeys[] = $var;
+		}
+		
+		if (count($inskey) == 0) $inskey[] = \PR\Model::INS_NONE;
+
+		$cntr->setParameters($cls->sTable,$primarykeys,$inskey,$myname);
 		$cntr->setNameTags($tags);
+		//$cntr->setTargets($targets);
+
+		// ins追加
+		foreach($cls->aInsLines as $ins) {
+			if (substr($ins, 0 , 2) == '//') contnue;
+			$parts = explode('=', $ins, 2);
+			if (count($parts) != 2) continue;
+			if (preg_match('/\$(.+)/', $parts[0], $matches) == 0) continue;
+			$key = trim($matches[1]);
+			$val = eval('return ' . $parts[1]);
+			$cntr->{$key} = $val;
+		}
+		
 		return $cntr;
 	}
 
-		$aPrimaryKeys = array('iSysId','iUserId');
-		$aInsKey = array('colSysId'=>\PR\Model::INS_SERIAL);
-		$sMyName = get_class($this);
-		$this->setParameters('Sample_Table',$aPrimaryKeys,$aInsKey,$sMyName);
+	public static function newEntity($rsName){
+		$entity = new Entity();
 
-		$this->aNameTags = array();
-		$this->aNameTags['iSysId'] = new \PR\NameTag('iSysId','post_SysId','colSysId','システムID',\PR\Model::DT_NUMERIC);
-		$this->aNameTags['sUserId'] = new \PR\NameTag('sUserId','post_UserId','colUserId','ユーザーID',\PR\Model::DT_ALPHANUMERIC);
-		$this->aNameTags['fFloat'] = new \PR\NameTag('fFloat','post_Float','colFloat','小数',\PR\Model::DT_FLOAT);
-		$this->aNameTags['sText'] = new \PR\NameTag('sText','post_Text','s_colText','テキスト',\PR\Model::DT_TEXT);
-		$this->aNameTags['sTel'] = new \PR\NameTag('sTel','post_Tel','s_colTel','電話番号',\PR\Model::DT_TEL);
+		$cls = self::$aClasses_[$rsName];
+
+		foreach($cls->aColumns as $col=>$inf){
+			$ini = self::_getDefaultStr($inf['type']);
+			if (is_numeric($ini)) $ini = intval($ini);
+			elseif (is_null($ini)) $ini = null;
+			
+			$entity->$inf['var'] = $ini;
+			
+		}
+		
+		return $entity;
 	}
 
-
-		$sName = $rsName;
-		$callback = function($str){
-		    return $this->hello . ', ' . $str;
-		};
-	}
+	private static $sNameSpace_ = null;
+	private static $aClasses_ = array();
+	private static $aInsLines_ = array();
 
 	private function _readFile(){
 		$path = SysEnv::getYourEntityFilePath();
@@ -78,8 +121,23 @@ class EntityFactory{
 		$insPhase = false;
 		$bean = null;
 		$lineNum = 0;
-		foreach($line = $filer->getLine() !== null){
+		while(($lineP = $filer->getLine(true)) !== null){
 			$lineNum++;
+			$line = Misc::trim($lineP);
+
+			// insert phase
+			if(mb_strpos($line,'--- ins --- */') !== false){
+				$insPhase = false;
+				continue;
+			}
+			if(mb_strpos($line,'/* --- ins ---') !== false){
+				$insPhase = true;
+				continue;
+			}
+			if($insPhase){
+				$bean->aInsLines[] = $lineP;
+				continue;
+			}
 			if(!$filer->checkLine($line)) continue;
 			if(mb_strpos($line,'*/') !== false){
 				$cmtPhase = false;
@@ -89,9 +147,13 @@ class EntityFactory{
 				$cmtPhase = true;
 				continue;
 			}
+			if(mb_strpos($line,'# namespace') !== false){
+				self::$sNameSpace_ = $filer->substr($line,'# namespace');
+			}
 			if($cmtPhase) continue;
+
 			if(!$clsPhase){
-				$str = $this->substr($line,'# ContainerName:');
+				$str = $filer->substr($line,'# Container:');
 				if(empty($str)) continue;
 				$names = explode(',',$str);
 				$bean = new ModelData($names[0],$names[1]);
@@ -100,32 +162,113 @@ class EntityFactory{
 			}
 
 			// class phase
-			$str = $this->substr($line,'primary key(',')');
+			$str = $filer->substr($line,'primary key(',')');
 			if(!empty($str)){
 				$keys = explode(',',$str);
 				foreach($keys as $pkey){
 					$var = $bean->aColumns[$pkey]['var'];
 					$bean->aPrimaryKeys[$var] = $pkey;
 				}
-				$this->aClasses_[$bean->sClass] = $bean;
+				self::$aClasses_[$bean->sClass] = $bean;
 				$clsPhase = false;
 				continue;
 			}
 			// table
-			$str = $this->substr($line,'create table','(');
+			$str = $filer->substr($line,'create table','(');
 			if(!empty($str)){
 				$bean->sTable = $str;
 				continue;
 			}
 			// column
-			$col = $this->_getColumn($line);
+			$col = self::_getColumn($line,$filer);
 			if($col == null){
 				$msg = 'Invalid column. line='.$lineNum;
 				throw new Exception(C_PR_ERR_EINVAL,$msg);
 			}
 			$bean->aColumns += $col;
 		}
+		$filer->closeFile();
 	}
+
+	private function _getColumn($rsLine,$roFiler){
+		$line = $rsLine;
+		if(mb_strpos($line,'var=') === false) return null;
+		$column = array();
+		$words = explode(' ',$line);
+		$colName = $words[0];
+		for($i=1; $i<count($words); $i++){
+			if(!empty($words[$i])){
+				$colType = $words[$i];
+				break;
+			}
+		}
+		$strs = explode(',',$roFiler->substr($line,'#'));
+		$var=null;$post=null;$name=null;$type=null;$ins=null;
+		foreach($strs as $part){
+			if(mb_strpos($part,'var=') !== false) $var = mb_substr($part,4);
+			if(mb_strpos($part,'post=') !== false) $post = mb_substr($part,5);
+			if(mb_strpos($part,'name=') !== false) $name = mb_substr($part,5);
+			if(mb_strpos($part,'type=') !== false) $type = mb_substr($part,5);
+			if(mb_strpos($part,'ins=') !== false) $ins = mb_substr($part,4);
+		}
+		if($post == null) return null;
+		$typeStr = self::_getType($type);
+		$column[$colName] = array('var'=>$var,'post'=>$post,'name'=>$name,'type'=>$typeStr,'colType'=>$colType);
+		if($ins != null) $column[$colName]['ins'] = self::_getKind($ins);
+		return $column;
+	}
+
+	private function _getDefaultStr($rsType){
+		$str = 'null';
+		if(($rsType == '\\PR\\Model::DT_NUMERIC')||($rsType == '\\PR\\Model::DT_DATE')){
+			$str = '0';
+		}else if($rsType == '\\PR\\Model::DT_FLOAT'){
+			$str = '0.0';
+		}
+		return $str;
+	}
+
+	private function _getType($type){
+		$typeStr = '\\PR\\Model::DT_NUMERIC';
+		if($type == Model::DT_NUMERIC){
+			$typeStr = '\\PR\\Model::DT_NUMERIC';
+		}else if($type == Model::DT_FLOAT){
+			$typeStr = '\\PR\\Model::DT_FLOAT';
+		}else if($type == Model::DT_ALPHABET){
+			$typeStr = '\\PR\\Model::DT_ALPHABET';
+		}else if($type == Model::DT_ALPHANUMERIC){
+			$typeStr = '\\PR\\Model::DT_ALPHANUMERIC';
+		}else if($type == Model::DT_TEXT){
+			$typeStr = '\\PR\\Model::DT_TEXT';
+		}else if($type == Model::DT_PASSWORD){
+			$typeStr = '\\PR\\Model::DT_PASSWORD';
+		}else if($type == Model::DT_URL){
+			$typeStr = '\\PR\\Model::DT_URL';
+		}else if($type == Model::DT_EMAIL){
+			$typeStr = '\\PR\\Model::DT_EMAIL';
+		}else if($type == Model::DT_POSTCODE){
+			$typeStr = '\\PR\\Model::DT_POSTCODE';
+		}else if($type == Model::DT_TEL){
+			$typeStr = '\\PR\\Model::DT_TEL';
+		}else if($type == Model::DT_DATE){
+			$typeStr = '\\PR\\Model::DT_DATE';
+		}else if($type == Model::DT_DOMAIN){
+			$typeStr = '\\PR\\Model::DT_DOMAIN';
+		}
+		return $typeStr;
+	}
+
+	private function _getKind($ins){
+		$kindStr = '\\PR\\Model::INS_NONE';
+		$ins = mb_strtolower($ins);
+		if($ins == 'serial'){
+			$kindStr = '\\PR\\Model::INS_SERIAL';
+		}else if($ins == 'unique'){
+			$kindStr = '\\PR\\Model::INS_UNIQUE';
+		}
+		return $kindStr;
+	}
+
 }
 
 class ModelData{

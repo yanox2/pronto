@@ -6,7 +6,7 @@
  *---------------------------------------------------------------------------*/
 namespace PR;
 
-abstract class Model{
+class Model{
 
 	// data type
 	const DT_NUMERIC = 1;
@@ -21,6 +21,8 @@ abstract class Model{
 	const DT_TEL = 10;
 	const DT_DATE = 11;
 	const DT_DOMAIN = 12;
+	const DT_LOGINID = 13;
+	const DT_URI = 14;
 
 	// get data type
 	const TYPE_PRIMARY = 0;
@@ -43,6 +45,8 @@ abstract class Model{
 
 	protected $aResults = null;
 	protected $sIdxSep = '---';
+	protected $sInsKeyVal = null;
+	protected $sMyName_ = null;
 
 	private $iIdxType_ = 0;
 	private $aIndex_ = null;
@@ -125,6 +129,10 @@ abstract class Model{
 				$chr = substr($rmVal,0,1);
 				if(!HTTPUtil::isAlphabet($chr)) $rc = C_PR_ERR_EPARAM;
 			}
+		}else if($riType == self::DT_LOGINID){
+			if(!HTTPUtil::isAlphabet($rmVal,3)) $rc = C_PR_ERR_EPARAM;
+		}else if($riType == self::DT_URI){
+			if(!HTTPUtil::isURL($rmVal,true)) $rc = C_PR_ERR_EPARAM;
 		}
 		return $rc;
 	}
@@ -135,9 +143,9 @@ abstract class Model{
 		return $rc;
 	}
 
-	protected function addPostErrorMsg($rsMsg,$rsSep,$rsVar,$riCode,$riMinLen=0,$riMaxLen=0,$riKind=0){
+	protected function addPostErrorMsg($rsMsg,$rsSep,$riCode,$rsName,$riType=0,$raCStrs=null){
 		$msg = $rsMsg;
-		$err = $this->getPostErrorMsg($rsVar,$riCode,$riMinLen,$riMaxLen,$riKind);
+		$err = $this->getPostErrorMsg($riCode,$rsName,$riType,$raCStrs);
 		if(!empty($err)){
 			$sp = $rsSep;
 			if(empty($rsMsg)) $sp = '';
@@ -149,44 +157,48 @@ abstract class Model{
 	protected function getPostErrorMsg($riCode,$rsName,$riType=0,$raCStrs=null){
 		$msg = '';
 		if($riType == self::DT_PASSWORD){
-			$msg = SMSG('PR_E104',$rsName,SMSG('PR_D005'));
+			$msg = OMSG('PR_E104',$rsName,OMSG('PR_D005'));
 			if($riCode == C_PR_ERR_ENOENT){
-				$msg = SMSG('PR_E103',$rsName);
+				$msg = OMSG('PR_E103',$rsName);
 			}else if($riCode == C_PR_ERR_EINVAL){
-				$msg = SMSG('PR_E105',$rsName);
+				$msg = OMSG('PR_E105',$rsName);
 			}else if($riCode == C_PR_ERR_ESHORT){
-				$msg = SMSG('PR_E106',$rsName,$raCStrs['min']);
+				$msg = OMSG('PR_E106',$rsName,$raCStrs['min']);
 			}else if($riCode == C_PR_ERR_EOVER){
-				$msg = SMSG('PR_E107',$rsName,$raCStrs['max']);
+				$msg = OMSG('PR_E107',$rsName,$raCStrs['max']);
 			}else if($riCode == C_PR_ERR_EPARAM){
-				$msg = SMSG('PR_E108',$rsName,$raCStrs['kind']);
+				$msg = OMSG('PR_E108',$rsName,$raCStrs['kind']);
 			}
 		}else if($riCode == C_PR_ERR_ENOENT){
-			$msg = SMSG('PR_E103',$rsName);
+			$msg = OMSG('PR_E103',$rsName);
 		}else if($riCode == C_PR_ERR_EPARAM){
-			$msg = SMSG('PR_E104',$rsName,'');
+			$msg = OMSG('PR_E104',$rsName,'');
 			if($riType == self::DT_NUMERIC){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D000'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D000'));
 			}else if($riType == self::DT_FLOAT){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D001'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D001'));
 			}else if($riType == self::DT_ALPHABET){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D002'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D002'));
 			}else if($riType == self::DT_ALPHANUMERIC){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D003'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D003'));
 			}else if($riType == self::DT_TEXT){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D004'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D004'));
 			}else if($riType == self::DT_URL){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D006'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D006'));
 			}else if($riType == self::DT_EMAIL){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D007'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D007'));
 			}else if($riType == self::DT_POSTCODE){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D008'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D008'));
 			}else if($riType == self::DT_TEL){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D009'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D009'));
 			}else if($riType == self::DT_DATE){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D010'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D010'));
 			}else if($riType == self::DT_DOMAIN){
-				$msg = SMSG('PR_E104',$rsName,SMSG('PR_D011'));
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D011'));
+			}else if($riType == self::DT_LOGINID){
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D012'));
+			}else if($riType == self::DT_URI){
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D013'));
 			}
 		}
 		return $msg;
@@ -222,6 +234,7 @@ abstract class Model{
 		$rc = $this->oDao->select($rsTable,$aSels,$raWheres,$rsToken);
 		if($rc == 0) $rc = $this->oDao->fetch();
 		if($rc != 0) return $rc;
+		$this->aResults = array();
 		$record = $this->oDao->getAll();
 		$this->oDao->free();
 		$this->setResults($record,self::IDX_SERIAL);
@@ -388,11 +401,15 @@ abstract class Model{
 					$aIns[$key] = md5(uniqid(mt_rand(),true));
 				}
 				$loop = true;
+			}else if($rc == C_PR_ERR_EEXIST){
+				return $rc;
 			}else if($rc != 0){
 				$this->errorOccured(C_PR_ERR_EDBACS,'PR_E014','add3:rc='.$rc);
 				return C_PR_ERR_EDBACS;
 			}
 		}while($loop);
+
+		$this->sInsKeyVal = $aIns[$key];
 		return 0;
 	}
 

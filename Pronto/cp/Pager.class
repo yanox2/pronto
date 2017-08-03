@@ -49,15 +49,15 @@ class Pager{
 	public function load(){
 		if(isset($_GET['pg'])){
 			$this->iPage_ = intval($_GET['pg']);
-		}else if(isset($_POST[self::PREFIX.'Page'])){
-			$this->iPage_ = intval($_POST[self::PREFIX.'Page']);
+		}else if(HTTPUtil::isPost(self::PREFIX.'Page')){
+			$this->iPage_ = HTTPUtil::getPostValue(self::PREFIX.'Page',DT_NUMERIC);
 		}else{
 			$this->iPage_ = intval($_SESSION[self::PREFIX.'Page']);
 		}
 		if(isset($_GET['sr'])){
 			$this->iSort_ = intval($_GET['sr']);
-		}else if(isset($_POST[self::PREFIX.'Sort'])){
-			$this->iSort_ = intval($_POST[self::PREFIX.'Sort']);
+		}else if(HTTPUtil::isPost(self::PREFIX.'Sort')){
+			$this->iSort_ = HTTPUtil::getPostValue(self::PREFIX.'Sort',DT_NUMERIC);
 		}else{
 			$this->iSort_ = intval($_SESSION[self::PREFIX.'Sort']);
 		}

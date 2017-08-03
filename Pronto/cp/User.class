@@ -6,7 +6,7 @@
  *---------------------------------------------------------------------------*/
 namespace PR;
 
-class User{
+abstract class User{
 
 	protected $oDao = null;
 	protected $oMySubSys = null;
@@ -15,198 +15,119 @@ class User{
 	protected $oMail = null;
 	protected $oMessage = null;
 
+	protected $aPostProf = null;
+
+	protected $aSesTargets_ = array('sLoginId','sPasswd');
+	protected $aCkTargets_ = array('sLoginId','sPasswd');
+
 	private $sSesPrefix_ = C_PR_PREFIX_SESSION;
 	private $sCkPrefix_ = C_PR_PREFIX_COOKIE;
 
 	public function __construct(){
 		$this->oDao = \PR\DaoFactory::create();
-		$this->oMySubSys = new \PR\SubSystem($this->oDao);
-		$this->oMyProf = new \PR\UserProfile($this->oDao);
 		$this->oMail = new \PR\Mail();
 		$this->oMessage = new \PR\Message();
 	}
 
-/*---------------------------------------------------------------------------*
- * Getter Setter
- *---------------------------------------------------------------------------*/
 	public function setPrefixes($raPrefixes){
 		$this->sSesPrefix_ = $raPrefixes['session'];
 		$this->sCkPrefix_ = $raPrefixes['cookie'];
 	}
 
-	public function getSubSystem($riType=\PR\Model::TYPE_BEAN){
-		if($riType == \PR\Model::TYPE_BEAN) return $this->oMySubSys->getBean();
-		if($riType == \PR\Model::TYPE_POST) return $this->oMySubSys->getPost();
-		if($riType == \PR\Model::TYPE_LIST) return $this->oMySubSys->getList();
+	public function getSubSys(){
+		return $this->oMySubSys;
+	}
+	public function getProf(){
+		return $this->oMyProf;
+	}
+	public function setSubSys($roSubSystem){
+		$this->oMySubSys = $roSubSystem;
+	}
+	public function setProf($roProfile){
+		$this->oMyProf = $roProfile;
 	}
 
-	public function getProfile($riType=\PR\Model::TYPE_BEAN){
-		if($riType == \PR\Model::TYPE_BEAN) return $this->oMyProf->getBean();
-		if($riType == \PR\Model::TYPE_POST) return $this->oMyProf->getPost();
-		if($riType == \PR\Model::TYPE_LIST) return $this->oMyProf->getList();
+	public function setSessionTargets($raTargets){
+		$this->aSesTargets_ = $raTargets;
+	}
+	public function setCookieTargets($raTargets){
+		$this->aCkTargets_ = $raTargets;
 	}
 
 /*---------------------------------------------------------------------------*
  * Reader
  *---------------------------------------------------------------------------*/
-	public function numSubSys($raWheres=null,$rsTokens=null){
-		return $this->oMySubSys->num($raWheres,$rsTokens);
+	public function numSubSys($raWhereTgs=null,$rsTokens=null){
+		return $this->oMySubSys->numX($raWhereTgs,$rsTokens);
 	}
 
-	public function readSubSys($riSysId,$rbHasLock=false){
-		if(empty($riSysId)) return C_PR_ERR_ENOENT;
-		$aWheres = $this->oMySubSys->convert(array('iSysId'=>$riSysId));
+	public function readSubSys($raWhereTgs=null,$rbHasLock=false){
 		$sTokens = null;
 		if($rbHasLock) $sTokens = 'for update';
-		$rc = $this->oMySubSys->read($aWheres,$sTokens);
+		$rc = $this->oMySubSys->readX($raWhereTgs,$sTokens);
 		return $rc;
 	}
 
-	public function readSubSysBySysName($rsSysName,$rbHasLock=false){
-		if(empty($rsSysName)) return C_PR_ERR_ENOENT;
-		$aWheres = $this->oMySubSys->convert(array('sSysName'=>$rsSysName));
-		$sTokens = null;
-		if($rbHasLock) $sTokens = 'for update';
-		$rc = $this->oMySubSys->read($aWheres,$sTokens);
-		return $rc;
+	public function numProf($raWhereTgs=null,$rsTokens=null){
+		return $this->oMyProf->numX($raWhereTgs,$rsTokens);
 	}
 
-	public function numProf($raWheres=null,$rsTokens=null){
-		return $this->oMyProf->num($raWheres,$rsTokens);
-	}
-
-	public function readProfByBean($roBean,$rbHasLock=false){
-		if(empty($roBean)) return C_PR_ERR_ENOENT;
-		if(empty($roBean->iSysId)) return C_PR_ERR_ENOENT;
-
-		$sysId = $roBean->iSysId;
-		$aWheres = $this->oMyProf->convert(array('iSysId'=>$sysId));
-		if(!empty($roBean->iUserId)){
-			$ninf = $this->oMyProf->getNameInf('iUserId');
-			$aWheres[$ninf->sColumn] = $roBean->iUserId;
-		}else if(!empty($roBean->sLoginId)){
-			$ninf = $this->oMyProf->getNameInf('sLoginId');
-			$aWheres[$ninf->sColumn] = $roBean->sLoginId;
-		}else{
-			return C_PR_ERR_ENOENT;
-		}
+	public function readProf($raWhereTgs=null,$rbHasLock=false){
 		$sTokens = null;
 		if($rbHasLock) $sTokens = 'for update';
-		$rc = $this->oMyProf->read($aWheres,$sTokens);
+		$rc = $this->oMyProf->readX($raWhereTgs,$sTokens);
 		if($rc != 0) return $rc;
-		$prof = $this->oMyProf->getBean();
-		if(!empty($prof->sPasswd)) $prof->sPasswd = \PR\Crypt::decrypt($prof->sPasswd,'pass');
-		if($this->oMySubSys->isEmpty()){
-			$rc = $this->readSubSys($sysId);
-			if($rc != 0) return $rc;
-		}
 		return 0;
 	}
 
-	public function readProf($riSysId,$riUserId,$rbHasLock=false){
-		if((empty($riSysId))||(empty($riUserId))) return C_PR_ERR_ENOENT;
-		$aWheres = $this->oMyProf->convert(array('iSysId'=>$riSysId,'iUserId'=>$riUserId));
-		$sTokens = null;
-		if($rbHasLock) $sTokens = 'for update';
-		$rc = $this->oMyProf->read($aWheres,$sTokens);
-		if($rc != 0) return $rc;
-		$prof = $this->oMyProf->getBean();
-		if(!empty($prof->sPasswd)) $prof->sPasswd = \PR\Crypt::decrypt($prof->sPasswd,'pass');
-		if($this->oMySubSys->isEmpty()){
-			$rc = $this->readSubSys($riSysId);
-			if($rc != 0) return $rc;
-		}
-		return 0;
-	}
-
-	public function readProfByLoginId($riSysId,$rsLoginId,$rbHasLock=false){
-		if((empty($riSysId))||(empty($rsLoginId))) return C_PR_ERR_ENOENT;
-		$aWheres = $this->oMyProf->convert(array('iSysId'=>$riSysId,'sLoginId'=>$rsLoginId));
-		$sTokens = null;
-		if($rbHasLock) $sTokens = 'for update';
-		$rc = $this->oMyProf->read($aWheres,$sTokens);
-		if($rc != 0) return $rc;
-		$prof = $this->oMyProf->getBean();
-		if(!empty($prof->sPasswd)) $prof->sPasswd = \PR\Crypt::decrypt($prof->sPasswd,'pass');
-		if($this->oMySubSys->isEmpty()){
-			$rc = $this->readSubSys($riSysId);
-			if($rc != 0) return $rc;
-		}
-		return 0;
-	}
-
-	public function listsProf($raWheres=null,$rsTokens=null,$raIndex=null){
-		return $this->oMyProf->lists($raWheres,$rsTokens,$raIndex);
-	}
-
-	public function pageProf($riPage,$riLimit,$raWheres=null,$rsTokens=''){
-		$rc = $this->num($raWheres,$sTokens);
+	public function pageProf($riPage,$riLimit,$raWhereTgs=null,$rsTokens=''){
+		$rc = $this->numX($raWhereTgs,$sTokens);
 		if($rc != 0) return $rc;
 		$this->oPaging = new \PR\Paging($riPage,$riLimit,$rc);
 		$tokens = $rsTokens.' '.$this->oPaging->getSql();
-		return $this->oMyProf->list($raWheres,$tokens);
+		return $this->oMyProf->listsX($raWheres,$tokens);
+	}
+
+	public function listsProf($raWhereTgs=null,$rsTokens=null,$raIndex=null){
+		return $this->oMyProf->listsX($raWhereTgs,$rsTokens,$raIndex);
 	}
 
 /*---------------------------------------------------------------------------*
  * Post
  *---------------------------------------------------------------------------*/
 	public function postProf(){
-		$post = $this->oMyProf->post();
-		$msg = '';
-		$msg .= $this->oMyProf->checkPassword('sLoginId',$post->sLoginId,C_PR_MIN_PASSWDLEN);
-		$msg .= $this->oMyProf->checkPassword('sPasswd',$post->sPasswd,C_PR_MIN_PASSWDLEN,C_PR_MAX_PASSWDLEN,C_PR_MIN_PASSWDKIND);
-		$msg .= $this->oMyProf->checkPost('sName',$post->sName);
-		$msg .= $this->oMyProf->checkPost('sEMail',$post->sEMail);
-		$msg .= $this->oMyProf->checkPost('iLocale',$post->iLocale,true);
-		$msg .= $this->oMyProf->checkPost('sNote',$post->sNote,true);
-		return $msg;
+		$this->oMyProf->post();
+		$rc = $this->oMyProf->checkPostByTarget();
+		if(!empty($rc)) return $rc;
+		return null;
 	}
 
 /*---------------------------------------------------------------------------*
  * Update
  *---------------------------------------------------------------------------*/
-	public function addProf($riSysId){
-		$rc = $this->oMyProf->add();
+	public function addProf(){
+		$rc = $this->oMyProf->addX();
 		return $rc;
 	}
 
-	public function updateProf($riSysId){
-		$prof = $this->oMyProf->getBean();
-		$post = $this->oMyProf->getPost();
-		if((empty($prof->iSysId))||(empty($prof->iUserId))){
-			$this->errorOccured(C_PR_ENOENT,'E001',$post->sName);
+	public function updateProf($raEncVars=null){
+		$prof = $this->oMyProf->getEntity();
+		if(!empty($raEncVars)){
+			Misc::encode($prof,$raEncVars);
 		}
-		if($riSysId != $prof->iSysId){
-			$this->errorOccured(C_PR_ENOENT,'E001',$post->sTitle);
-		}
-
-		if($prof->sPasswd != $post->sPasswd) $prof->iChangeDate = time();
-		$prof->sLoginId = $post->sLoginId;
-		$pass = $post->sPasswd;
-		$prof->sPasswd = \PR\Crypt::encrypt($pass,'pass');
-		$prof->sName = $post->sName;
-		$prof->sEMail = $post->sEMail;
-		$prof->iLocale = $post->iLocale;
-		$prof->sNote = $post->sNote;
-		$sets = $prof->getArray(Model::TYPE_DATA);
-		$rc = $this->oMyProf->update($sets);
+		$rc = $this->oMyProf->updateX();
 		if($rc != 0) return $rc;
-		$prof->sPasswd = $pass;
-		$this->setSession(true);
-		$this->setCookie2($prof->sLoginId,$post->sPasswd);
+		$this->setSession();
+		$this->setCookie($prof->sLoginId,$post->sPasswd);
 		return 0;
-	}
-
-	public function getItemsProf($rsSuffix=''){
-		return $this->oMyProf->getItemArray($rsSuffix);
 	}
 
 /*---------------------------------------------------------------------------*
  * Message
  *---------------------------------------------------------------------------*/
-	public function getMessage(){
+	public function getMessage($riType=\PR\Message::NORMAL){
 		$this->oMessage->load();
-		return $this->oMessage->toString();
+		return $this->oMessage->toString($riType);
 	}
 
 	public function setMessage($rsMessage,$riType=\PR\Message::NORMAL){
@@ -231,131 +152,134 @@ class User{
 
 	public function fromSession(){
 		$fx = $this->sSesPrefix_;
-		$prof = $this->oMyProf->newBean();
-		$prof->iSysId = $_SESSION[$fx.'SysId'];
-		$prof->iUserId = $_SESSION[$fx.'UserId'];
-		$prof->sLoginId = $_SESSION[$fx.'LoginId'];
-		$prof->sName = $_SESSION[$fx.'Name'];
-		$prof->iLastLogin = $_SESSION[$fx.'LastLogin'];
+		$prof = $this->oMyProf->getEntity();
+		if(empty($prof)) $prof = $this->oMyProf->newEntity();
+		foreach($this->aSesTargets_ as $target){
+			if(isset($_SESSION[$fx.$target])) $prof->{$target} = $_SESSION[$fx.$target];
+		}
 	}
 
-	public function setSession($rbNoLastLogin=false){
+	public function setSession(){
 		$fx = $this->sSesPrefix_;
-		$prof = $this->oMyProf->getBean();
-		$_SESSION[$fx.'SysId'] = $prof->iSysId;
-		$_SESSION[$fx.'UserId'] = $prof->iUserId;
-		$_SESSION[$fx.'LoginId'] = $prof->sLoginId;
-		$_SESSION[$fx.'Name'] = $prof->sName;
-		if(!$rbNoLastLogin) $_SESSION[$fx.'LastLogin'] = $prof->iLastLogin;
+		$prof = $this->oMyProf->getEntity();
+		if(empty($prof)) return;
+		foreach($this->aSesTargets_ as $target){
+			$_SESSION[$fx.$target] = $prof->{$target};
+		}
 	}
 
 	public function clearSession(){
 		$fx = $this->sSesPrefix_;
-		unset($_SESSION[$fx.'SysId']);
-		unset($_SESSION[$fx.'UserId']);
-		unset($_SESSION[$fx.'LoginId']);
-		unset($_SESSION[$fx.'Name']);
-		unset($_SESSION[$fx.'LastLogin']);
+		foreach($this->aSesTargets_ as $target){
+			unset($_SESSION[$fx.$target]);
+		}
 	}
 
-	public function isJustAfterLogin(){
-		$fx = $this->sSesPrefix_;
-		$just = $_SESSION[$fx.'JustAfterLogin'];
-		unset($_SESSION[$fx.'JustAfterLogin']);
-		return $just;
-	}
-
-	public function hasCookie(){
-		return isset($_COOKIE[$this->sCkPrefix_.'LoginId']);
+	public function hasCookie($sTarget){
+		return isset($_COOKIE[$this->sCkPrefix_.$sTarget]);
 	}
 
 	public function fromCookie(){
 		$fx = $this->sCkPrefix_;
-		$prof = $this->oMyProf->newPost();
-		$prof->sLoginId = $_COOKIE[$fx.'LoginId'];
-		$prof->sPasswd = $_COOKIE[$fx.'Passwd'];
-	}
-
-	public function setCookie($rsPostName){
-		$fx = $this->sCkPrefix_;
-		$time = time() + 30 * 24 * 3600;
-		$prof = $this->oMyProf->getPost();
-		if(!empty($_POST[$rsPostName])){
-			setcookie($fx.'LoginId',$prof->sLoginId,$time,'','',true);
-			setcookie($fx.'Passwd',$prof->sPasswd,$time,'','',true);
-		}else{
-			setcookie($fx.'LoginId');
-			setcookie($fx.'Passwd');
+		$prof = $this->oMyProf->getEntity();
+		if(empty($prof)) $prof = $this->oMyProf->newEntity();
+		foreach($this->aCkTargets_ as $target){
+			if(isset($_COOKIE[$fx.$target])) $prof->{$target} = $_COOKIE[$fx.$target];
 		}
 	}
 
-	public function setCookie2($rsLoginId,$rsPasswd){
+	public function setCookie($rsPath=null,$rsDomain=null,$rbSecure=false,$rbHttpOnly=false){
 		$fx = $this->sCkPrefix_;
 		$time = time() + 30 * 24 * 3600;
-		setcookie($fx.'LoginId',$rsLoginId,$time,'','',true);
-		setcookie($fx.'Passwd',$rsPasswd,$time,'','',true);
+		$prof = $this->oMyProf->getEntity();
+		if(empty($prof)) return;
+		foreach($this->aCkTargets_ as $target){
+			setcookie($fx.$target,$prof->{$target},$time,$rsPath,$rsDomain,$rbSecure,$rbHttpOnly);
+		}
+	}
+
+	public function removeCookie($rsPath=null,$rsDomain=null){
+		$time = time() - 3600;
+		foreach($this->aCkTargets_ as $target){
+			setcookie($this->sCkPrefix_.$target,'',$time,$rsPath,$rsDomain);
+		}
+	}
+
+	public function getAfterLogined(){
+		return urldecode(Misc::getOneTimeSes('Redirect'));
+	}
+	public function setAfterLogined($rsUrl){
+		Misc::setOneTimeSes('Redirect',urlencode($rsUrl));
+	}
+
+	public function isJustLogin(){
+		return (Misc::getOneTimeSes('JustLogin') === true);
+	}
+	public function justLogin(){
+		Misc::setOneTimeSes('JustLogin',true);
 	}
 
 /*---------------------------------------------------------------------------*
  * Login
  *---------------------------------------------------------------------------*/
-	public function isLogin(){
-		return isset($_SESSION[$this->sSesPrefix_.'UserId']);
+	public function isLogin($rsTarget){
+		return isset($_SESSION[$this->sSesPrefix_.$rsTarget]);
 	}
 
-	public function login(){
-		$post = $this->oMyProf->post();
-		if((empty($post->sLoginId))||(empty($post->sPasswd))) return C_PR_ERR_EPARAM;
-		$rc = $this->readSubSysBySysName(\PR\Request::$sSUBSYSTEM);
+	public function login($raTargets=null,$rbNoSubSys=false){
+		if(!$rbNoSubSys){
+			$this->oMySubSys->post();
+			$rc = $this->oMySubSys->checkPostByTarget();
+			if(!empty($rc)) return $rc;
+			$rc = $this->readSubSys();
+			if($rc != 0) return $rc;
+		}
+		$this->oMyProf->post();
+		$rc = $this->oMyProf->checkPostByTarget();
+		if(!empty($rc)){
+			$this->setMessage($rc,\PR\Message::ERROR);
+			return C_PR_ERR_EPARAM;
+		}
+		$this->aPostProf = $this->oMyProf->getArray();
+		$this->oMyProf->mergeEntity($this->oMySubSys,true);
+		$rc = $this->readProf($raTargets,true);
 		if($rc != 0) return $rc;
-		$sys = $this->oMySubSys->getBean();
-		$post->iSysId = $sys->iSysId;
-		$rc = $this->readProfByBean($post);
-		if($rc != 0) return $rc;
-		$prof = $this->oMyProf->getBean();
-		if($post->iFail > 2) return C_PR_ERR_EOVER;
-		if($post->sPasswd == $prof->sPasswd) return 0;
-
-		// パスワード誤り
-		$num = $prof->iFail + 1;
-		$aSets = $this->oMyProf->convert(array('iFail'=>$num));
-		$rc = $this->oMyProf->update($aSets);
-		if($rc != 0) return $rc;
-		if($num > 2) return C_PR_ERR_EOVER;
-		return C_PR_ERR_EINVAL;
+		return 0;
 	}
 
 	public function logout(){
 		$this->clearSession();
 	}
 
-	public function setLastLogin(){
-		$time = time();
-		$aSets = $this->oMyProf->convert(array('iLastLogin'=>$time,'iFail'=>0));
-		$rc = $this->oMyProf->update($aSets);
+	public function restore(){
+		if(empty($this->aPostProf)) return;
+		$this->oMyProf->setArray($this->aPostProf);
+	}
+
+	public function checkPassword($rsPassVal,$rsPassVar='sPasswd',$rsFailVar='iFailLogin',$riLimit=3){
+		$prof = $this->oMyProf->getEntity();
+		if(!Misc::hasProp($prof,$rsPassVar)) return C_PR_ERR_EPARAM;
+		if(!Misc::hasProp($prof,$rsFailVar)) return C_PR_ERR_EPARAM;
+		if($prof->{$rsFailVar} >= $riLimit) return C_PR_ERR_ELOCKED;
+		if($rsPassVal == $prof->{$rsPassVar}) return 0;
+
+		// パスワード誤り
+		$prof->{$rsFailVar}++;
+		$this->oMyProf->targetPrimary();
+		$rc = $this->oMyProf->updateX(array($rsFailVar));
 		if($rc != 0) return $rc;
-		$_SESSION[$this->sSesPrefix_.'JustAfterLogin'] = true;
-		session_regenerate_id();
-		return 0;
+		if($prof->{$rsFailVar} >= $riLimit) return C_PR_ERR_EOVER;
+		return C_PR_ERR_EINVAL;
 	}
 
 /*---------------------------------------------------------------------------*
  * Mail
  *---------------------------------------------------------------------------*/
-	public function sendMail($rsSubject,$rsBody){
-		$prof = $this->oMyProf->getBean();
-		if(empty($prof->sName)) return false;
-		if(empty($prof->sEMail)) return false;
-		$to = array($prof->sEMail=>$prof->sName);
-		$rc = $this->oMail->send($to,$rsSubject,$rsBody);
-		return $rc;
-	}
-
-	public function sendMailEx($roProf,$rsSubject,$rsBody){
-		$prof = $roProf;
-		if(empty($prof->sName)) return false;
-		if(empty($prof->sEMail)) return false;
-		$to = array($prof->sEMail=>$prof->sName);
+	public function sendMail($rsSubject,$rsBody,$rsNameVar='sName',$rsEMailVar='sEMail'){
+		$prof = $this->oMyProf->getEntity();
+		if(Misc::hasProp($prof,$rsNameVar)) return C_PR_ERR_EPARAM;
+		if(Misc::hasProp($prof,$rsEMailVar)) return C_PR_ERR_EPARAM;
+		$to = array($prof->{$rsEMailVar}=>$prof->{$rsNameVar});
 		$rc = $this->oMail->send($to,$rsSubject,$rsBody);
 		return $rc;
 	}
