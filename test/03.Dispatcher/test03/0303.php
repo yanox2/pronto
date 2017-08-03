@@ -1,35 +1,28 @@
 <?php
 /* Copyright 2016 dodat */
 /*---------------------------------------------------------------------------*
- * Dispatcher
+ * Test
  *      ディスパッチ（カスタム）
  *---------------------------------------------------------------------------*/
-require_once('../../path.inc');
-require_once(C_PR_HOME_PATH.'/test/03.Dispatcher/test03/sysdef_org.inc');
+require_once('../../etc/path.inc');
+require_once('./sysdef_org.inc');
 
 class Sample extends \PR\Dispatcher{
 
 	// @Override (annotation)
 	// SysEnv変更処理
 	protected function alterSysEnv(){
-		$homeDir = '/'.\PR\HTTPUtil::formatURL(C_PR_HOME_PATH);
-		$insDir = '/'.\PR\HTTPUtil::formatURL(C_PR_INSTALL_PATH);
-		$testDir = '/'.\PR\HTTPUtil::formatURL(C_PR_TEST_ROOT).'/03.Dispatcher/test03';
-		$uriRoot = $testDir;
-
-		if($_GET['st'] > 0){
-			\PR\SysEnv::setSubSysMode(2);
-			\PR\SysEnv::setSubSysURIRoot($uriRoot);
-		}
+		// sysdef_org.incで設定済み
+		// $uri = \PR\SysEnv::getYourDocRoot().'03.Dispatcher/test03';
+		// \PR\SysEnv::setSubSysMode(2);
+		// \PR\SysEnv::setSubSysURIRoot($uri);
 	}
 
 	// @Override
 	protected function preproc(){
-		if(intval($_GET['st']) == 1){
-			$loader = \PR\ClassLoader::getInstance();
-			$aPaths = array(C_PR_YOUR_DISPROOT.'/dir1/dir2');
-			$loader->setPaths($aPaths,'');
-		}
+		$loader = \PR\ClassLoader::getInstance();
+		$aPaths = array(\PR\SysEnv::getYourDispRoot().'/dir1/dir2');
+		$loader->setPaths($aPaths);
 
 		$subsys = \PR\Request::$sSUBSYSTEM;
 		if($subsys == 'debug'){
@@ -40,10 +33,9 @@ class Sample extends \PR\Dispatcher{
 
 		if($subsys != 'mainte'){
 			include('../../etc/header.tpl');
-			print '<header>●ディスパッチ（カスタム）</header>'."\n";
-			print '<article>'."\n";
-			print '<section style="font-size:14px;">'."\n";
-			print '<div style="margin:10px 0;">'.C_PR_HOME_PATH.'/test/03.Dispatcher/test03/sysdef_org.inc を読み込み</div>'."\n";
+			print '<div id="lay_center" class="col span_14" style="min-height:1000px; padding:30px;">'."\n";
+			print '<header style="margin-bottom:20px; font-size:20px;">●ディスパッチ（カスタム）</header>'."\n";
+			print '<article style="font-size:14px;">'."\n";
 		}
 	}
 
@@ -75,23 +67,13 @@ if($_GET['st'] == 1){
 	$disp->setMode(\PR\Dispatcher::MODE_INCLUDE);
 }
 $disp->dispatch();
-
 ?>
 
-<?php
-print '<div style="height:200px; margin:10px 0; padding:10px; font-size:12px; border:1px solid black; overflow-y:scroll; overflow-x:visible;">'."\n";
-
-$url = $testDir.'/subsys1/ClassA/methodA/?st=1';
-print '<div><a href="'.$url.'">メソッドコール</a></div>'."\n";
-$url = $testDir.'/subsys1/disp.php?st=2';
-print '<div><a href="'.$url.'">ファイルインクルード</a></div>'."\n";
-
-print '</div>'."\n";
-?>
-
-</section>
 </article>
+</div>
 
 <?php
+$uri = \PR\SysEnv::getSubSysURIRoot();
+include('./right.tpl');
 include('../../etc/footer.tpl');
 ?>
