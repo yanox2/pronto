@@ -1,11 +1,14 @@
 <?php
 
-define('C_PR_DOC_ROOT','/var/www/html');
-define('C_PR_HOME_PATH','/home/pronto/dev');
-define('C_PR_BACKUP_PATH','/home/pronto/Backup');
-define('C_PR_INSTALL_PATH','/usr/share/pear/Pronto');
-define('C_PR_TEST_ROOT','/test');
-define('C_PR_USER','');
-define('C_PR_GROUP','');
+$path = __DIR__.'/xx_path.inc';
+if(is_readable($path)) include($path);
+if(defined('C_TEST')) return;
+
+define('C_INSTALL_PATH_PRONTO','/usr/share'); // Prontoインストール先
+define('C_INSTALL_PATH_TEST','/var/www/html'); // testインストール先
+
+define('C_BACKUP_PATH',''); // バックアップディレクトリ
+define('C_USER',''); // ディレクトリの所有者を変更する
+define('C_GROUP',''); // ディレクトリのグループを変更する
 
 ?>

@@ -14,74 +14,52 @@ if($argc != 2){
 	exit();
 }
 
-$docRoot = constant('C_PR_DOC_ROOT');
-$homeDir = constant('C_PR_HOME_PATH');
-$backDir = constant('C_PR_BACKUP_PATH');
-$insDir = constant('C_PR_INSTALL_PATH');
-$testRoot = constant('C_PR_TEST_ROOT');
-$user = constant('C_PR_USER');
-$group = constant('C_PR_GROUP');
+$insTest = constant('C_INSTALL_PATH_TEST');
+$insPr = constant('C_INSTALL_PATH_PRONTO');
 
-if($argv[1] == 'test'){
-	if(empty($testRoot)){
-		print 'C_PR_TEST_ROOT is necessary.'."\n";
-		exit();
-	}
-	$dir = $docRoot.$testRoot;
-	if(file_exists($dir)){
-		$cmd = '\\rm -r '.$dir;
-		system($cmd,$rc);
-		print $cmd.' rc='.$rc."\n";
-	}
-	$cmd = 'cp -r '.$homeDir.'/test '.$dir;
-	system($cmd,$rc);
-	print $cmd.' rc='.$rc."\n";
-	$cmd = 'cp -r '.$homeDir.'/utility/path.inc '.$dir;
-	system($cmd,$rc);
-	print $cmd.' rc='.$rc."\n";
-	$cmd = 'cp '.$homeDir.'/Pronto/web/script_pronto.js '.$dir.'/etc';
-	system($cmd,$rc);
-	print $cmd.' rc='.$rc."\n";
-	$cmd = 'cp '.$homeDir.'/Pronto/web/style_pronto.css '.$dir.'/etc';
-	system($cmd,$rc);
-	print $cmd.' rc='.$rc."\n";
-	if((!empty($user))&&(!empty($group))){
-		$cmd = 'chown -R '.$user.'.'.$group.' '.$dir;
-		system($cmd,$rc);
-		print $cmd.' rc='.$rc."\n";
-		$cmd = 'chown -R '.$user.'.'.$group.' '.$homeDir;
-		system($cmd,$rc);
-		print $cmd.' rc='.$rc."\n";
-	}
+$backDir = constant('C_BACKUP_PATH');
+$user = constant('C_USER');
+$group = constant('C_GROUP');
 
-}else{
+$homeDir = __DIR__.'/..';
+
+if($argv[1] == 'pronto'){
+	if(!file_exists($insPr)) mkdir($insPr);
+	$insDir = $insPr.'/Pronto';
 	if(!empty($backDir)){
 		$dateStr = date('Ymd',time());
 		$dir = $backDir.'/'.$dateStr;
-		if(file_exists($dir)){
-			$cmd = '\\rm -r '.$dir;
-			system($cmd,$rc);
-			print $cmd.' rc='.$rc."\n";
-		}
+		if(file_exists($dir)) syscmd('\\rm -r '.$dir);
 		mkdir($dir);
-		$cmd = 'cp -r '.$insDir.' '.$dir;
-		system($cmd,$rc);
-		print $cmd.' rc='.$rc."\n";
+		if(file_exists($insDir)) syscmd('cp -r '.$insDir.' '.$dir);
 	}
-	if(file_exists($insDir)){
-		$cmd = '\\rm -r '.$insDir;
-		system($cmd,$rc);
-		print $cmd.' rc='.$rc."\n";
+	if(file_exists($insDir)) syscmd('\\rm -r '.$insDir);
+	syscmd('cp -r '.$homeDir.'/Pronto '.$insDir);
+
+}else if($argv[1] == 'test'){
+	if(!file_exists($insTest)){
+		print 'C_INSTALL_PATH_TEST directory is necessary.'."\n";
+		exit();
 	}
-	$cmd = 'cp -r '.$homeDir.'/Pronto '.$insDir;
-	system($cmd,$rc);
-	print $cmd.' rc='.$rc."\n";
-	if((!empty($user))&&(!empty($group))){
-		$cmd = 'chown -R '.$user.'.'.$group.' '.$insDir;
-		system($cmd,$rc);
-		print $cmd.' rc='.$rc."\n";
-	}
-	$cmd = 'chmod a+x '.$homeDir.'/utility/*.sh';
+	$insDir = $insTest.'/testPronto';
+	if(file_exists($insDir)) syscmd('\\rm -r '.$insDir);
+	syscmd('cp -r '.$homeDir.'/test '.$insDir);
+	syscmd('cp '.$homeDir.'/utility/path.inc '.$insDir.'/etc');
+	if(file_exists($homeDir.'/utility/xx_path.inc')) syscmd('cp '.$homeDir.'/utility/xx_path.inc '.$insDir.'/etc');
+	syscmd('cp '.$homeDir.'/Pronto/web/script_pronto.js '.$insDir.'/etc');
+	syscmd('cp '.$homeDir.'/Pronto/web/style_pronto.css '.$insDir.'/etc');
+	syscmd('cp '.$homeDir.'/sample/*.class '.$insDir.'/etc');
+}
+
+if((!empty($user))&&(!empty($group))){
+	syscmd('chown -R '.$user.'.'.$group.' '.$insDir);
+	syscmd('chown -R '.$user.'.'.$group.' '.$homeDir);
+	syscmd('chmod a+x '.$homeDir.'/utility/*.sh');
+}
+syscmd('chmod a+rw '.$homeDir.'/utility');
+syscmd('chmod a+rw '.$insTest.'/testPronto/etc');
+
+function syscmd($cmd){
 	system($cmd,$rc);
 	print $cmd.' rc='.$rc."\n";
 }
