@@ -1,0 +1,2 @@
+RewriteEngine On
+RewriteRule (.*) 0402.php
