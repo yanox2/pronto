@@ -5,33 +5,80 @@
  *      暗号・複合
  *---------------------------------------------------------------------------*/
 namespace PR;
-require_once('Crypt/Blowfish.php');
+if(C_PR_CRYPT_BLOWFISH == 1) require_once('Crypt/Blowfish.php');
 
 class Crypt{
 
-	private static $aKeys__ = array('pass'=>'oIwjp&FoE34iJf4$&3984%#%','card'=>'weofj948&$YYhIfd98e$$wsA');
+	private static $aKeys__ = array('default'=>'oIwjp&FoE34iJf4$&3984%#%','pass'=>'weofj948&$YYhIfd98e$$wsA');
+	private static $aPrefixes__ = array('default'=>'#$o(','pass'=>'#$o(');
 
-	public static function setKey($rsKey,$rsVal){
-		if(strlen($rsVal) != 24) return false;
+	public static function setKey($rsKey,$rsVal,$rsPrefix=''){
 		self::$aKeys__[$rsKey] = $rsVal;
+		self::$aPrefixes__[$rsKey] = $rsPrefix;
 		return true;
 	}
 
-	public static function encrypt($rsStr,$rsType='pass'){
-		$str = '#$o('.$rsStr;
-		$bf = new \Crypt_Blowfish(self::$aKeys__[$rsType]);
-		$enc = base64_encode($bf->encrypt($str));
+	public static function encrypt($rsStr,$rsKey='default'){
+		if(C_PR_CRYPT_BLOWFISH === 1){
+			return self::encrypt_blowfish($rsStr,$rsKey);
+		}else{
+			return self::encrypt_openssl($rsStr,$rsKey);
+		}
+	}
+
+	public static function decrypt($rsStr,$rsKey='default'){
+		if(C_PR_CRYPT_BLOWFISH === 1){
+			return self::decrypt_blowfish($rsStr,$rsKey);
+		}else{
+			return self::decrypt_openssl($rsStr,$rsKey);
+		}
+	}
+
+	public static function encrypt_openssl($rsStr,$rsKey='default'){
+		$str = self::$aPrefixes__[$rsKey].$rsStr;
+		$method = 'AES-256-CBC';
+		$key = self::$aKeys__[$rsKey];
+		$ivLength = openssl_cipher_iv_length($method);
+		$iv = openssl_random_pseudo_bytes($ivLength);
+		$enc = openssl_encrypt($str,$method,$key,0,$iv);
+		$enc = base64_encode($iv.$enc);
+		$enc = str_replace(array('+','/','='),array('-','_',''),$enc);
 		return $enc;
 	}
 
-	public static function decrypt($rsStr,$rsType='pass'){
-		$bf = new \Crypt_Blowfish(self::$aKeys__[$rsType]);
+	public static function decrypt_openssl($rsStr,$rsKey='default'){
+		$rsStr = str_replace(array('-','_'),array('+','/'),$rsStr);
+		$method = 'AES-256-CBC';
+		$key = self::$aKeys__[$rsKey];
+		$ivLength = openssl_cipher_iv_length($method);
+		$rsStr = base64_decode($rsStr);
+		$iv = substr($rsStr,0,$ivLength);
+		$rsStr = substr($rsStr,$ivLength);
+		$dec = openssl_decrypt($rsStr,$method,$key,0,$iv);
+		$str = substr($dec,strlen(self::$aPrefixes__[$rsKey]));
+		$str = rtrim($str,"\0");
+		return $str;
+	}
+
+	public static function encrypt_blowfish($rsStr,$rsKey='default'){
+		$str = self::$aPrefixes__[$rsKey].$rsStr;
+		$bf = new \Crypt_Blowfish(self::$aKeys__[$rsKey]);
+		$enc = base64_encode($bf->encrypt($str));
+		$enc = str_replace(array('+','/','='),array('-','_',''),$enc);
+		return $enc;
+	}
+
+	public static function decrypt_blowfish($rsStr,$rsKey='default'){
+		$rsStr = str_replace(array('-','_'),array('+','/'),$rsStr);
+		$mod4 = strlen($rsStr) % 4;
+		if($mod4) $rsStr .= substr('====',$mod4);
+		$bf = new \Crypt_Blowfish(self::$aKeys__[$rsKey]);
 		$dec = $bf->decrypt(base64_decode($rsStr));
-		$str = substr($dec,4);
-		$hex = bin2hex($str);
-		$hex = ereg_replace('00','',$hex);
-		//$hex = rtrim($hex,"\0");
-		$str = pack("H*", $hex);
+		$str = substr($dec,strlen(self::$aPrefixes__[$rsKey]));
+		//$hex = bin2hex($str);
+		//$hex = ereg_replace('00','',$hex);
+		//$str = pack("H*", $hex);
+		$str = rtrim($str,"\0");
 		return $str;
 	}
 }

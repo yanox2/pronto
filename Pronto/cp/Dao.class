@@ -42,6 +42,7 @@ abstract class Dao{
 	public static function getTokenKeywords($rsKeywords,$raCols){
 		$token = '';
 		if(empty($rsKeywords)) return $token;
+		if(empty($raCols)) return $token;
 		$aWords = preg_split("/(\s|　)+/",$rsKeywords);
 		if(empty($aWords)) return $token;
 
@@ -80,14 +81,27 @@ abstract class Dao{
 				$sp = ' and ';
 			}
 		}
-		if(!empty($rsToken)) $sql .= ' '.$rsToken;
+		if(!empty($rsToken)){
+			if(!$raWheres){
+				if((strpos($rsToken,'order by') !== 0)
+					&&(strpos($rsToken,'group by') !== 0)
+					&&(strpos($rsToken,'limit') !== 0)
+					&&(strpos($rsToken,'where') !== 0)
+					){
+					$sql .= ' where ';
+				}
+			}
+			$sql .= ' '.$rsToken;
+		}
 		return $sql;
 	}
 
 	protected function quoteGPC($rsValue,$rsColumn=null){
 		$value = $rsValue;
 		if(ini_get('magic_quote_gpc') == 'On') $value = stripslashes($value);
-		if(!is_numeric($value)){
+		if($rsValue === null){
+			$value = 'null';
+		}else if(!is_numeric($value)){
 			$value = "'".$this->safeString($value)."'";
 		}else if(!empty($rsColumn)){
 			$len = strlen(Dao::PFIX_STRING);

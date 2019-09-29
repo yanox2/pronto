@@ -19,6 +19,7 @@ class DaoMySQL extends Dao{
 	private $sName_ = null;
 
 	private $iNumRows_ = 0;
+	private $sError_ = null;
 	private static $aHistory_ = array();
 
 /*---------------------------------------------------------------------------*
@@ -86,8 +87,16 @@ class DaoMySQL extends Dao{
 		$rc = self::$oDB__->query($this->sSql_);
 		if($rc === false){
 			$code = self::$oDB__->errno;
-			if($code == 1065) return C_PR_ERR_ENOENT; // 1065:ER_EMPTY_QUERY
-			if(($code == 1022)||($code == 1062)) return C_PR_ERR_EEXIST; // 1022:ER_DUP_KEY 1062:ER_DUP_ENTRY
+			if($code == 1065){ // 1065:ER_EMPTY_QUERY
+				$this->sError_ = self::$oDB__->error;
+				return C_PR_ERR_ENOENT;
+			}else if(($code == 1022)||($code == 1062)){ // 1022:ER_DUP_KEY 1062:ER_DUP_ENTRY
+				// ERROR 1062 (23000): Duplicate entry '1' for key 'PRIMARY'
+				// ERROR 1062 (23000): Duplicate entry 'col2_2' for key 'col2'
+				$this->sError_ = self::$oDB__->error;
+				if(strpos($this->sError_,'PRIMARY') !== false) return C_PR_ERR_EEXIST;
+				return C_PR_ERR_EDUPLICATE;
+			}
 			$this->_errorOccured('query');
 		}
 		$this->oRes_ = $rc;

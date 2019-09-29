@@ -28,70 +28,12 @@ var PRDebug = {
 		this.level_ = level;
 	},
 
-	alert: function(exp){
-		if(this.level_ == 1) pr_alert(exp.message);
+	alert: function(msg){
+		if(this.level_ == 1) alert(msg.replace(/[\n\r]/g,"\r\n"));
 	}
 };
-
-// onload
-var PROnload = {
-	methods_: null,
-
-	init: function(){
-		this.methods_ = new Array();
-		//throw "error occured.";
-		//$("#foo").bind("click", {obj: this}, this.show);
-	},
-
-	add: function(func){
-		this.methods_.push(func);
-	},
-
-	dos: function(){
-		$(document).ready($.proxy(this._dos,this));
-	},
-
-	_dos: function(){
-		//this.methods_.forEach(function(func,i){
-		//	if($.isFunction(func)){
-		//		new func();
-		//	}
-		//});
-		for(var i=0; i<this.methods_.length; i++){
-			var func = this.methods_[i];
-			if($.isFunction(func)) new func();
-		}
-	}
-};
-
-// 初期化関数
-function pr_init(){
-	// fade mask
-	$(".dfade").click(function(e){
-		//if($(this).attr("data-toggle")) this.collapse("hidden");
-		return false;
-	});
-	$(".dfade2").click(function(e){
-		//if($(this).attr("data-toggle")) this.collapse("hidden");
-		return false;
-	});
-
-	// blur click focus
-	$("a").focus(function(e){
-		if(this.blur) this.blur();
-	});
-}
-
-// 初期処理
 var prdebug = Object.create(PRDebug);
-try{
-	var pronload = Object.create(PROnload)
-	pronload.add(pr_init);
-	pronload.dos();
-
-}catch(exp){
-	prdebug.alert(exp);
-}
+prdebug.setLevel(1);
 
 /*---------------------------------------------------------------------------*
  * Ajax - class
@@ -102,6 +44,8 @@ var PRIndicator = {
 	message_: null,
 	state_: 0, // 0:disabled,1:enabled
 	mkstate_: 0, // 0:disabled,1:enabled
+	indZ_: 2215, // indicator zIndex (2010)
+	maskZ_: 2210, // masked zIndex (2000)
 
 	init: function(){
 		this.id_ = "prTag_indicator";
@@ -116,6 +60,11 @@ var PRIndicator = {
 		this.message_ = message;
 	},
 
+	setZIndex: function(indZ,maskZ){
+		this.indZ_ = indZ;
+		this.maskZ_ = maskZ;
+	},
+
 	// インジケータ表示
 	enable: function(){
 		if(this.state_ == 1) return;
@@ -123,7 +72,7 @@ var PRIndicator = {
 		$("#" + this.id_ + "_msg").html(this.message_);
 		var ele = $("#" + this.id_);
 		var pos = pr_getCoordinates(ele);
-		ele.css({"display":"block","left":pos[0]+"px","top":pos[1]+"px","zIndex":"2010"});
+		ele.css({"display":"block","left":pos[0]+"px","top":pos[1]+"px","zIndex":this.indZ_});
 		this.state_ = 1;
 	},
 
@@ -141,7 +90,7 @@ var PRIndicator = {
 		var w = document.documentElement.scrollWidth;
 		var h = document.documentElement.scrollHeight;
 		var ele = $("#prTag_maskAll");
-		ele.css({"width":w+"px","height":h+"px","zIndex":"2000","opacity":"0.50","filter":"alpha(opacity=50)"});
+		ele.css({"width":w+"px","height":h+"px","zIndex":this.maskZ_,"opacity":"0.50","filter":"alpha(opacity=50)"});
 		this.mkstate_ = 1;
 	},
 
@@ -160,6 +109,7 @@ var PRAjax = {
 	formId_: null, // <form>のID
 	isJSONP_: false, // JSONP
 	hasFile_: false, // ファイルアップロード
+	headers_: null,
 
 	callback_: null,
 
@@ -182,17 +132,23 @@ var PRAjax = {
 		this.callback_ = cb;
 	},
 
+	// HTTPヘッダ設定
+	setHeader: function(headers){
+		this.headers_ = headers;
+	},
+
 	get: function(){
 	},
 
 	post: function(submitId){
-		$async = true;
-		if(this.callback_ == null) $async = false;
+		var isAsync = true;
+		if(this.callback_ == null) isAsync = false;
 		this.indicator_.enable();
 		$form = $("#" + this.formId_);
 		var data = $form.serialize();
 		if(submitId) data += "&submitId=" + submitId;
-		var param = {url:$form.attr("action"),type:$form.attr("method"),async:$async,cache:false,timeout:30000,context:this};
+		var param = {url:$form.attr("action"),type:$form.attr("method"),async:isAsync,cache:false,timeout:30000,context:this};
+/*
 		if(this.isJSONP){
 			param = Object.assign(param,{dataType:"jsonp",jsonp:"jcbk"});
 		}else{
@@ -205,12 +161,43 @@ var PRAjax = {
 		}else{
 			param = Object.assign(param,{data:data});
 		}
+*/
+		if(this.isJSONP){
+			if(this.hasFile_){
+				var fd = new FormData($form[0]);
+				fd.append("submitId",submitId);
+				param = {url:$form.attr("action"),type:$form.attr("method"),async:isAsync,cache:false,timeout:30000,context:this,
+					dataType:"jsonp",jsonp:"jcbk",contentType:false,processData:false,data:fd};
+			}else{
+				param = {url:$form.attr("action"),type:$form.attr("method"),async:isAsync,cache:false,timeout:30000,context:this,
+					dataType:"jsonp",jsonp:"jcbk",data:data};
+			}
+		}else{
+			if(this.hasFile_){
+				var fd = new FormData($form[0]);
+				fd.append("submitId",submitId);
+				param = {url:$form.attr("action"),type:$form.attr("method"),async:isAsync,cache:false,timeout:30000,context:this,
+					dataType:"json",contentType:false,processData:false,data:fd};
+			}else{
+				param = {url:$form.attr("action"),type:$form.attr("method"),async:isAsync,cache:false,timeout:30000,context:this,
+					dataType:"json",data:data};
+			}
+		}
+		if(this.headers_){
+			param = Object.assign(param,{headers:this.headers_});
+		}
+
 		var rvals = new Array(3);
 		$.ajax(param).done(function(res,status,xhr){
 			this.indicator_.disable(true);
-			if(res.message) pr_alert(res.message);
+			if(res.message) prdebug.alert(res.message);
 			if(res.confirm){
 				if(!window.confirm(res.confirm)) return;
+			}
+			if(res.reload){
+				kpScroll();
+				location.reload(true);
+				return;
 			}
 			if(res.location !== undefined){
 				window.location.href = res.location;
@@ -237,7 +224,7 @@ var PRAjax = {
 	// private methods
 	// エラー処理
 	_error: function(rc,msg){
-		pr_alert(msg + " code=" + rc);
+		prdebug.alert(msg + " code=" + rc);
 		//button.attr("disabled",true);
 		//$form = $(this);
 		//button.removeAttr("disabled");
@@ -249,9 +236,7 @@ var PRFormAjax = {
 	// variables
 	ajax_: null,
 	formId_: null, // <form>のID
-	actId_: null, // フォームをActiveにするID
 	showId_: null, // Active/InActiveとなるフォームエリアのID
-	async_: true, // true:非同期 false:同期
 	current_: null, // カレントリスナ
 	submitId_: null, // submitされたID
 	state_: 0,
@@ -259,7 +244,7 @@ var PRFormAjax = {
 
 	// override methods (your implementation)
 	// abstract:フォームアクティブ
-	active: function(){
+	active: function(res){
 		if(!this.showId_) return;
 		if($("#"+this.showId_).get(0)){
 			$("#"+this.showId_).css({"display":"block"});
@@ -280,13 +265,15 @@ var PRFormAjax = {
 	// 初期処理
 	init: function(param){
 		this.formId_ = param.formId;
-		if(param.actId) this.actId_ = param.actId;
 		if(param.showId) this.showId_ = param.showId;
-		if(param.async) this.async_ = param.async;
 		var hasFile = false;
 		if(param.hasFile) hasFile = param.hasFile;
 		this.ajax_ = Object.create(PRAjax,{"formId":param.formId,"hasFile":hasFile});
-		var lis = Object.create(PRFormAjaxListener,{"actId":this.actId_});
+		var actId = null;
+		if(param.actId) actId = param.actId;
+		var async = true;
+		if(param.async) async = param.async;
+		var lis = Object.create(PRFormAjaxListener,{"actId":actId,"async":async});
 		this.addListener(lis);
 	},
 
@@ -295,13 +282,33 @@ var PRFormAjax = {
 		this.ajax_.setIndicator(indicator);
 	},
 
+	// HTTPヘッダ設定
+	setHeader: function(headers){
+		this.ajax_.setHeader(headers);
+	},
+
 	// submitボタンの追加
-	addSubmit: function(id,type){
+	addSubmit: function(id,type,hover){
 		if(type == 0){ // onClick
-			$("#"+id).click({me:this},function(e){
+			var ele = $("#"+id);
+			if(hover){
+				ele.hover(
+					function(e){
+						ele.css("cursor","pointer");
+						if(hover == 2) ele.css("opacity","0.6");
+					},
+					function(e){
+						ele.css("cursor","default");
+						if(hover == 2) ele.css("opacity","1.0");
+					}
+				);
+			}
+			ele.click({me:this},function(e){
 				e.preventDefault();
 				var me = e.data.me;
 				me.submitId_ = e.target.id;
+				var rc = me.current_.beforeSubmit(e);
+				if(!rc) return false;
 				$("#"+me.formId_).submit();
 			});
 		}else{ // onChange
@@ -315,28 +322,28 @@ var PRFormAjax = {
 	},
 
 	// リスナの追加
-	addListener: function(listener){
+	addListener: function(listener,res){
 		if(listener.actId){
 			$("#"+listener.actId).click({me:this},function(e){
 				var me = e.data.me;
 				var lis = listener;
 				if(lis.state == 0) return;
-
 				if(lis.async){ // 非同期
 					if(lis.reqId){
+						if(res) lis.domUpdate(res);
 						var cb = me.callback.bind(me);
 						lis.setCallback(cb);
 						lis.request(e);
 					}else{
-						lis.show();
-						me.active();
+						lis.preshow(res);
+						me.active(res);
 						me.current_ = lis;
 						me.state_ = 1;
 					}
 					me.lis_ = lis;
 				}else{ // 同期
-					var res = null;
 					if(lis.reqId){
+						if(res) lis.domUpdate(res);
 						var rvals = lis.request(e);
 						if(rvals[0] != "success"){
 							lis.onError(rvals[2]);
@@ -344,41 +351,48 @@ var PRFormAjax = {
 						}
 						res = rvals[1];
 					}
-					lis.show(res);
-					me.active();
+					lis.preshow(res);
+					me.active(res);
 					me.current_ = lis;
 					me.state_ = 1;
 				}
 				return false; // e.preventDefault() & e.stopPropagation()
 			});
-			$(document).click({me:this},function(e){
-				if(!me) return;
-				var me = e.data.me;
-				if(me.state_ == 1){
-					me.inactive();
-					me.state_ = 0;
-				}
-			});
-			$("#"+this.showId_).click(function(e){
-				e.stopPropagation();
-			});
+			if(this.showId_){
+				$(document).click({me:this},function(e){
+					if(!me) return;
+					var me = e.data.me;
+					if(me.state_ == 1){
+						me.inactive();
+						me.state_ = 0;
+					}
+				});
+				$("#"+this.showId_).click(function(e){
+					e.stopPropagation();
+				});
+			}
 		}else{
 			// actIdがない場合はすぐにフォームに値をセット
-			listener.show();
+			listener.preshow(res);
 			this.current_ = listener;
 			this.state_ = 1;
+		}
+		if(res){
+			if(res.submitId){
+				this.addSubmit(res.submitId,res.submitType,res.submitHover);
+			}
 		}
 	},
 
 	// request callback
 	callback: function(rvals){
 		if(rvals[0] != "success"){
-			lis.onError(rvals[2]);
+			this.lis_.onError(rvals[2]);
 			return;
 		}
 		var res = rvals[1];
-		this.lis_.show(res);
-		this.active();
+		this.lis_.preshow(res);
+		this.active(res);
 		this.current_ = this.lis_;
 		this.state_ = 1;
 	},
@@ -392,14 +406,15 @@ var PRFormAjax = {
 			var submitId = me.submitId_;
 			me.submitId_ = null;
 			if(lis.state == 0) return;
-			if(lis.before(e,submitId) === false) return false;
+			var rc = lis.prebefore(e,submitId);
+			if(!rc) return false;
 			var msg = lis.getMessage(submitId);
 			if(msg){
 				if(!window.confirm(msg)) return false;
 			}
 			if(lis.state == 2) return;
 
-			if(me.async_){
+			if(lis.async){
 				var cb = me._callback.bind(me);
 				me.ajax_.setCallback(cb);
 				me.ajax_.post(submitId);
@@ -408,7 +423,7 @@ var PRFormAjax = {
 				var rvals = me.ajax_.post(submitId);
 				if(rvals[0] == "success"){
 					var res = rvals[1];
-					lis.after(res);
+					lis.preafter(res);
 					if((res.rcode == 0)&&(!res.stay)) me.inactive();
 				}else{
 					lis.onError(rvals[2]);
@@ -422,7 +437,7 @@ var PRFormAjax = {
 	_callback: function(rvals){
 		if(rvals[0] == "success"){
 			var res = rvals[1];
-			this.lis_.after(res);
+			this.lis_.preafter(res);
 			if((res.rcode == 0)&&(!res.stay)) this.inactive();
 		}else{
 			this.lis_.onError(rvals[2]);
@@ -445,19 +460,20 @@ var PRFormAjaxListenerInf = {
 
 	// override methods (your implementation)
 	getMessage: function(msg){}, // 確認メッセージの取得
-	request: function(event){}, // フォームデータリクエスト
 	show: function(event){}, // フォーム表示
 	before: function(event,submitId){}, // 送信前処理
 	after: function(res){}, // 送信後処理
+	request: function(event){}, // フォームデータリクエスト
 	onError: function(error){}, // エラー処理
 
 	// public methods
 	init: function(param){}, // 初期処理
 	setCallback: function(cb){}, // 非同期コールバック
 
-	// private methods
-	_show: function(){}, // フォームデータ埋め込み
-	_after: function(res){} // DOM編集
+	// for PRFormAjax
+	preshow: function(){}, // フォームデータ埋め込み
+	prebefore: function(res){}, // 送信前処理
+	preafter: function(res){} // DOM編集
 };
 
 // Ajaxフォームリスナー基底クラス
@@ -468,13 +484,26 @@ var PRFormAjaxListener = {
 	state: 1,
 	async: true,
 	dom: null,
+	msg: null,
 
 	ajax_: null,
 	callback_: null,
 
 	// 確認メッセージの取得
 	getMessage: function(submitId){
-		return null;
+		return this.msg;
+	},
+
+	// フォーム表示
+	show: function(res){
+	},
+
+	// 送信前処理
+	before: function(event,submitId){
+	},
+
+	// 送信後処理
+	after: function(res){
 	},
 
 	// データリクエスト
@@ -483,20 +512,33 @@ var PRFormAjaxListener = {
 		return rvals;
 	},
 
-	// フォーム表示
-	show: function(res){
-		if(this.dom) this._domUpdate(this.dom);
+	// submit前処理
+	beforeSubmit: function(event){
+	},
+
+	// DOM
+	domUpdate: function(res){
 		if((res)&&(res.dom)) this._domUpdate(res.dom);
 	},
 
+	// フォーム表示
+	preshow: function(res){
+		if(this.dom) this._domUpdate(this.dom);
+		if((res)&&(res.dom)) this._domUpdate(res.dom);
+		this.show(res);
+	},
+
 	// 送信前処理
-	before: function(event,submitId){
+	prebefore: function(event,submitId){
+		var rc = this.before(event,submitId);
+		if(rc == false) return false;
 		return true;
 	},
 
 	// 送信後処理
-	after: function(res){
+	preafter: function(res){
 		if(res.dom) this._domUpdate(res.dom);
+		this.after(res);
 	},
 
 	// エラー処理
@@ -513,13 +555,20 @@ var PRFormAjaxListener = {
 			$("#"+this.actId).hover(
 				function(e){
 					$(this).css("cursor","pointer");
+					if(param.hover == 2) $(this).css("opacity","0.6");
 				},
 				function(e){
 					$(this).css("cursor","default");
+					if(param.hover == 2) $(this).css("opacity","1.0");
 				}
 			);
 		}
 		if(param.reqId) this.ajax_ = Object.create(PRAjax,{"formId":param.reqId});
+	},
+
+	// 確認メッセージの設定
+	setMessage: function(msg){
+		this.msg = msg;
 	},
 
 	// 非同期コールバック設定
@@ -577,14 +626,42 @@ var PRFormAjaxListener = {
 		if(dom.replace){ // idの中を更新
 			//$.each(dom.replace,function(id,tag){ $("#"+id).replaceWith(tag); });
 			$.each(dom.replace,function(id,tag){
+				var eles = pr_getElementByIdName(id);
+				if(eles){
+					$.each(eles,function(){
+						var tagName = $(this).get(0).tagName;
+						if(tagName == "INPUT"){
+							if(($(this).attr("type") == "radio")||($(this).attr("type") == "checkbox")){
+								var val = $(this).val();
+								if(val == tag){
+									$(this).prop("checked",true);
+								}else{
+									$(this).prop("checked",false);
+								}
+							}else{
+								$(this).val(tag);
+							}
+						}else if((tagName == "SELECT")||(tagName == "TEXTAREA")){
+							$(this).val(tag);
+						}else if(tagName == "IMG"){
+							$(this).attr("src",tag);
+						}else{
+							$(this).html(tag);
+						}
+					});
+				}
+/*
 				var ele = pr_getElementByIdName(id);
 				if(ele){
-					if(ele.get(0).tagName == "INPUT"){
+					if((ele.get(0).tagName == "INPUT")||(ele.get(0).tagName == "TEXTAREA")){
 						ele.val(tag);
+					}else if(ele.get(0).tagName == "IMG"){
+						ele.attr("src",tag);
 					}else{
 						ele.html(tag);
 					}
 				}
+*/
 			});
 		}
 		if(dom.remove){ // idを無効化
@@ -609,15 +686,19 @@ var PRFormAjaxListener = {
 // itemsの例
 // items:{"post_UserId":"5","post_Name":"test5","post_EMail":"test5@test.co.jp","post_Attr1":""}
 
-function pr_getElementByIdName(id){
-	var ele = $("#"+id);
-	if(!ele.get(0)){
-		ele = $("[name="+id+"]");
-		//ele = $("input[name="+id+"]");
-		if(!ele.get(0)) return null;
-	}
-	return ele;
-}
+// ●PRFormAjax
+//  formId		フォームのId。
+//  showId		activeエリア。エリア以外のクリックでinactive。
+//  hasFile		multipart用。
+//  actId		defaultリスナ用。
+//  async		defaultリスナ用。
+// ●PRFormAjaxListener
+//  actId		フォームがactiveになるId。lis.show()が呼ばれform.active()が呼ばれる。
+//  reqId		リクエストが発生するId。リクエスト後にlis.show()が呼ばれform.active()が呼ばれる。
+//  state		0:なにもしない 1:active 2:no submit。
+//  async		true:非同期 false:同期。
+//  dom			show()時のDOM操作。
+//  hover		actIdのホバー。
 
 /*---------------------------------------------------------------------------*
  * メッセージ - function
@@ -654,15 +735,10 @@ function pr_checkMsgSubmit(msg,obj,ptype){
 function pr_subwindow(html,title,width,height){
 	if(width == -1) width = 790 + 20;
 	if(height == -1) height = 850;
-	//var str = ',menubar=no,toolbar=no,scrollbars=yes';
-	var str = ',menubar=yes,toolbar=yes,scrollbars=yes';
+	var str = ',menubar=no,toolbar=no,location=no,status=no,resizable=no,scrollbars=yes';
+	//var str = ',menubar=yes,toolbar=yes,scrollbars=yes';
 	window.open(html,title,'width=' + width + ',height=' + height + str);
 	return false;
-}
-
-// アラート
-function pr_alert(msg){
-	alert(msg.replace(/[\n\r]/g,"\r\n"));
 }
 
 /*---------------------------------------------------------------------------*
@@ -755,8 +831,57 @@ function pr_getMouseCoordinates(evt){
 }
 
 /*---------------------------------------------------------------------------*
+ * 初期化 - function
+ *---------------------------------------------------------------------------*/
+function pr_init(){
+	// fade mask
+	$(".dfade").click(function(e){
+		//if($(this).attr("data-toggle")) this.collapse("hidden");
+		return false;
+	});
+	$(".dfade2").click(function(e){
+		//if($(this).attr("data-toggle")) this.collapse("hidden");
+		return false;
+	});
+
+	// blur click focus
+	$("a").focus(function(e){
+		if(this.blur) this.blur();
+	});
+}
+
+// reload後 元の位置
+function kpScroll(){
+	var re = /px=(\d+)&py=(\d+)/;
+	var pos = "px=" + $(window).scrollLeft() + "&py=" + $(window).scrollTop();
+	//Cookies.set("re_loc",pos,{expires:1,path:""});
+	Cookies.set("re_loc",pos,{expires:1});
+}
+function reScroll(){
+	var re = /px=(\d+)&py=(\d+)/;
+	var ck = Cookies.get("re_loc");
+	if((ck)&&(ck.match(re))){
+		var pos = ck.match(re);
+		window.scrollTo(pos[1],pos[2]);
+		//Cookies.remove("re_loc",{expires:1,path:""});
+		Cookies.remove("re_loc",{expires:1});
+	}
+}
+
+/*---------------------------------------------------------------------------*
  * Misc - function
  *---------------------------------------------------------------------------*/
+// get elementId or elementName
+function pr_getElementByIdName(id){
+	var ele = $("#"+id);
+	if(!ele.get(0)){
+		ele = $("[name="+id+"]");
+		//ele = $("input[name="+id+"]");
+		if(!ele.get(0)) return null;
+	}
+	return ele;
+}
+
 // htmlspecialchars
 function pr_htmlspecialchars(ch){
 	ch = ch.replace(/&/g,"&amp;");
@@ -767,6 +892,7 @@ function pr_htmlspecialchars(ch){
 	return ch ;
 }
 
+// block or none
 function pr_showBlock(id){
 	var idc = id + "_contents";
 	if(document.getElementById){
@@ -779,3 +905,183 @@ function pr_showBlock(id){
 		}
 	}
 }
+
+/*---------------------------------------------------------------------------*
+ * 初期化処理
+ *---------------------------------------------------------------------------*/
+$(function(){
+	pr_init();
+	reScroll();
+	prdebug.setLevel(0);
+});
+
+/*---------------------------------------------------------------------------*
+ *
+ * vendors
+ *
+ *---------------------------------------------------------------------------*/
+/*!
+ * JavaScript Cookie v2.2.0
+ * https://github.com/js-cookie/js-cookie
+ *
+ * Copyright 2006, 2015 Klaus Hartl & Fagner Brack
+ * Released under the MIT license
+ */
+;(function (factory) {
+	var registeredInModuleLoader = false;
+	if (typeof define === 'function' && define.amd) {
+		define(factory);
+		registeredInModuleLoader = true;
+	}
+	if (typeof exports === 'object') {
+		module.exports = factory();
+		registeredInModuleLoader = true;
+	}
+	if (!registeredInModuleLoader) {
+		var OldCookies = window.Cookies;
+		var api = window.Cookies = factory();
+		api.noConflict = function () {
+			window.Cookies = OldCookies;
+			return api;
+		};
+	}
+}(function () {
+	function extend () {
+		var i = 0;
+		var result = {};
+		for (; i < arguments.length; i++) {
+			var attributes = arguments[ i ];
+			for (var key in attributes) {
+				result[key] = attributes[key];
+			}
+		}
+		return result;
+	}
+
+	function init (converter) {
+		function api (key, value, attributes) {
+			var result;
+			if (typeof document === 'undefined') {
+				return;
+			}
+
+			// Write
+
+			if (arguments.length > 1) {
+				attributes = extend({
+					path: '/'
+				}, api.defaults, attributes);
+
+				if (typeof attributes.expires === 'number') {
+					var expires = new Date();
+					expires.setMilliseconds(expires.getMilliseconds() + attributes.expires * 864e+5);
+					attributes.expires = expires;
+				}
+
+				// We're using "expires" because "max-age" is not supported by IE
+				attributes.expires = attributes.expires ? attributes.expires.toUTCString() : '';
+
+				try {
+					result = JSON.stringify(value);
+					if (/^[\{\[]/.test(result)) {
+						value = result;
+					}
+				} catch (e) {}
+
+				if (!converter.write) {
+					value = encodeURIComponent(String(value))
+						.replace(/%(23|24|26|2B|3A|3C|3E|3D|2F|3F|40|5B|5D|5E|60|7B|7D|7C)/g, decodeURIComponent);
+				} else {
+					value = converter.write(value, key);
+				}
+
+				key = encodeURIComponent(String(key));
+				key = key.replace(/%(23|24|26|2B|5E|60|7C)/g, decodeURIComponent);
+				key = key.replace(/[\(\)]/g, escape);
+
+				var stringifiedAttributes = '';
+
+				for (var attributeName in attributes) {
+					if (!attributes[attributeName]) {
+						continue;
+					}
+					stringifiedAttributes += '; ' + attributeName;
+					if (attributes[attributeName] === true) {
+						continue;
+					}
+					stringifiedAttributes += '=' + attributes[attributeName];
+				}
+				return (document.cookie = key + '=' + value + stringifiedAttributes);
+			}
+
+			// Read
+
+			if (!key) {
+				result = {};
+			}
+
+			// To prevent the for loop in the first place assign an empty array
+			// in case there are no cookies at all. Also prevents odd result when
+			// calling "get()"
+			var cookies = document.cookie ? document.cookie.split('; ') : [];
+			var rdecode = /(%[0-9A-Z]{2})+/g;
+			var i = 0;
+
+			for (; i < cookies.length; i++) {
+				var parts = cookies[i].split('=');
+				var cookie = parts.slice(1).join('=');
+
+				if (!this.json && cookie.charAt(0) === '"') {
+					cookie = cookie.slice(1, -1);
+				}
+
+				try {
+					var name = parts[0].replace(rdecode, decodeURIComponent);
+					cookie = converter.read ?
+						converter.read(cookie, name) : converter(cookie, name) ||
+						cookie.replace(rdecode, decodeURIComponent);
+
+					if (this.json) {
+						try {
+							cookie = JSON.parse(cookie);
+						} catch (e) {}
+					}
+
+					if (key === name) {
+						result = cookie;
+						break;
+					}
+
+					if (!key) {
+						result[name] = cookie;
+					}
+				} catch (e) {}
+			}
+
+			return result;
+		}
+
+		api.set = api;
+		api.get = function (key) {
+			return api.call(api, key);
+		};
+		api.getJSON = function () {
+			return api.apply({
+				json: true
+			}, [].slice.call(arguments));
+		};
+		api.defaults = {};
+
+		api.remove = function (key, attributes) {
+			api(key, '', extend(attributes, {
+				expires: -1
+			}));
+		};
+
+		api.withConverter = init;
+
+		return api;
+	}
+
+	return init(function () {});
+}));

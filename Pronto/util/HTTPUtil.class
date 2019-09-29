@@ -101,8 +101,9 @@ class HTTPUtil{
 	}
 
 	public static function getPostValue($rsName,$riType=0){
-		if(!isset($_POST[$rsName])) return null;
+		if(!array_key_exists($rsName,$_POST)) return null;
 		$val = Misc::trim($_POST[$rsName]);
+		if($val === '') return '';
 		if(empty($val)) return $val;
 		return self::convPostVal($val,$riType);
 	}
@@ -143,6 +144,7 @@ class HTTPUtil{
 		  case Model::DT_DATE:
 		  case Model::DT_DOMAIN:
 		  case Model::DT_LOGINID:
+		  case Model::DT_URI:
 			$value = mb_convert_kana($rsVal,'a');
 			break;
 		  case Model::DT_TEXT: // 全角かなカナ
@@ -456,6 +458,28 @@ class HTTPUtil{
 /*---------------------------------------------------------------------------*
  * その他
  *---------------------------------------------------------------------------*/
+	// ファイルダウンロード
+	public static function downFile($kind,$file,$root,$spath=null,$resize=0,$ext=''){
+		if(($kind != 1)&&($kind != 2)) return C_PR_ERR_ENOENT;
+		if(!$file) return C_PR_ERR_ENOENT;
+		if($spath) $file = $spath.DS.$file;
+		$file .= ($ext) ? '.'.$ext : '';
+
+		$path = $root.DS.$file;
+		$type = 'img';
+		if($kind == 1){ // image
+			$type = 'img';
+		}else{
+			$type = 'file';
+		}
+		if(($type == 'img')&&($resize)){
+			\PR\Filer::downImage($path,$resize);
+		}else{
+			\PR\Filer::download($path,$type);
+		}
+		return 0;
+	}
+
 	// セッションIDの取得
 	public static function getSesId($rsDelimiter='&'){
 		$Id = '';

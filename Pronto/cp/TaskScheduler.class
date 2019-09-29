@@ -42,8 +42,8 @@ class TaskScheduler{
 
 		$date = date('Y/m/d H:i',time());
 		$opts = getopt('d::',array('date'));
-		if($opts['d']) $date = $opts['d'];
-		if($opts['date']) $date = $opts['date'];
+		if((array_key_exists('d',$opts))&&($opts['d'])) $date = $opts['d'];
+		if((array_key_exists('date',$opts))&&($opts['date'])) $date = $opts['date'];
 
 		$this->oDate_ = new Date();
 		$this->oDate_->setOfStr($date);
@@ -67,6 +67,7 @@ class TaskScheduler{
 				}
 				$this->resume($hasDao,$hasTran);
 				$task->action();
+				$hasCommit = $task->hasCommit();
 				$this->suspend($hasDao,$hasTran,$hasCommit,$task->hasCommit());
 			}
 
@@ -107,12 +108,12 @@ class TaskScheduler{
 	protected function errorOccurred($riCode,$rsMessage){
 		//throw new Exception($riCode,$rsMessage);
 		$str = $this->sPhese_.':'.$rsMessage.' rc='.$riCode;
-		Trace::out($str,1);
+		ELOG($str,false,1);
 	}
 
 	protected function println($rsMessage){
 		$str = $rsMessage;
-		Trace::out($str,1);
+		ELOG($str,false,1);
 	}
 }
 ?>

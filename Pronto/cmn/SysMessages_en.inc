@@ -43,9 +43,15 @@ return array(
 	'PR_E109' => 'You cannot register a free e-mail account.',
 	'PR_E110' => 'Login is needed.',
 	'PR_E111' => '%s not found. It may have been deleted.',
+	'PR_E112' => 'The current passwords do not match.',
+	'PR_E113' => 'The file is too big. Please set it within %s.',
+	'PR_E114' => 'The extension of the file is incorrect. Specify %s as the extension of the file to be read.',
+	'PR_E115' => 'Your email address is duplicated.',
+	'PR_E116' => 'There is an error in the %s.',
 
 	// 画面用のインフォメーション
 	'PR_I100' => 'Logout.',
+	'PR_I101' => 'It sent information on password reissue procedure to specified e-mail address.',
 
 	// データタイプ
 	'PR_D000' => 'numeric',

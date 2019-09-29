@@ -235,17 +235,42 @@ class Container extends Model{
 		$me = $this->_getEntity();
 		$other = $roCntr->getEntity();
 		foreach($this->aNameTags as $var=>$val){
-			if(array_key_exists($var,$roCntr->aNameTags)){
+			$tag = $roCntr->aNameTags[$var];
+			if($tag->sColumn == $val->sColumn){
 				$me->{$var} = $other->{$var};
 				if($rbTarget) $this->aTargets[] = $var;
 			}
 		}
 	}
 
+	public function getJSONArray($raTargets,$raResults=null){
+		$results = $raResults;
+		if(!$results) $results = $this->aResults;
+		if(!$results) return null;
+
+		$myclass = get_class($this);
+		$cntr = new $myclass();
+
+		$json = array();
+		foreach($results as $id=>$entity){
+			$cntr->setEntity($entity);
+			$arry = $cntr->getArrayX($raTargets);
+			if(!$arry) continue;
+			$arry2 = array();
+			foreach($raTargets as $var=>$val){
+				$idx = $val;
+				if(!is_numeric($var)) $idx = $var;
+				$arry2[$idx] = $arry[$val];
+			}
+			$json[$id] = $arry2;
+		}
+		return $json;
+	}
+
 /*---------------------------------------------------------------------------*
  * Check Post Value
  *---------------------------------------------------------------------------*/
-	public function checkPostByTarget($rsSep='<br>',$riMinLen=0,$riMaxLen=0,$riKind=0){
+	public function checkPostByTarget($rsSep='<br>',$raAccEmpties=null,$riMinLen=0,$riMaxLen=0,$riKind=0){
 		$this->_getEntity();
 		if(empty($this->aTargets)) return null;
 		$msg = '';
@@ -255,7 +280,9 @@ class Container extends Model{
 			if($tag->iType == Model::DT_PASSWORD){
 				$rc = $this->checkPasswordX($var,$riMinLen,$riMaxLen,$riKind);
 			}else{
-				$rc = $this->checkPostX($var);
+				$accEmpty = false;
+				if(InKey($raAccEmpties,array($var))) $accEmpty = $raAccEmpties[$var];
+				$rc = $this->checkPostX($var,$accEmpty);
 			}
 			if($rc != 0){
 				$msg .= $sp.$this->getPostErrorMsgX($var,$rc,$riMinLen,$riMaxLen,$riKind);
@@ -263,6 +290,24 @@ class Container extends Model{
 			}
 		}
 		return $msg;
+	}
+
+	public function checkPostByTargetX($riMinLen=0,$riMaxLen=0,$riKind=0){
+		$this->_getEntity();
+		if(empty($this->aTargets)) return null;
+		$msgs = array();
+		foreach($this->aTargets as $var){
+			$tag = $this->aNameTags[$var];
+			if($tag->iType == Model::DT_PASSWORD){
+				$rc = $this->checkPasswordX($var,$riMinLen,$riMaxLen,$riKind);
+			}else{
+				$rc = $this->checkPostX($var);
+			}
+			if($rc != 0){
+				$msgs[] = $this->getPostErrorMsgX($var,$rc,$riMinLen,$riMaxLen,$riKind);
+			}
+		}
+		return $msgs;
 	}
 
 	public function checkPostX($rsVar,$rbAccEmpty=false){
@@ -295,6 +340,7 @@ class Container extends Model{
 		$err = $this->getPostErrorMsgX($rsVar,$riCode,$riMinLen,$riMaxLen,$riKind);
 		if(!empty($err)){
 			$sp = $rsSep;
+			if($sp === null) $sp = $this->sSep;
 			if(empty($rsMsg)) $sp = '';
 			$msg .= $sp.$err;
 		}
@@ -308,7 +354,7 @@ class Container extends Model{
 			ELOG(SMSG('PR_E011',$rsVar));
 			return null;
 		}
-		$name = $tag->sTitle;
+		$name = OMSG($tag->sTitle);
 		$type = $tag->iType;
 		$aCStrs = array('min'=>$riMinLen,'max'=>$riMaxLen,'kind'=>$riKind);
 		$msg = $this->getPostErrorMsg($riCode,$name,$type,$aCStrs);
@@ -325,10 +371,10 @@ class Container extends Model{
 		return $rc;
 	}
 
-	public function numX($raWhereTgs=null,$rsToken=null){
+	public function numX($raWhereTgs=null,$rsToken=null,$rsSel=null){
 		//$aWheres = $this->_getArray($raWhereTgs,Model::TYPE_PRIMARY);
 		$aWheres = $this->_getArray($raWhereTgs);
-		$rc = $this->num($this->sTable_,$aWheres,$rsToken);
+		$rc = $this->num($this->sTable_,$aWheres,$rsToken,$rsSel);
 		return $rc;
 	}
 

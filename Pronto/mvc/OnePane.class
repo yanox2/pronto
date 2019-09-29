@@ -47,7 +47,7 @@ class OnePane implements Renderable{
 	public function render(){
 		if(!empty($this->oMessage)){
 			$html = $this->oMessage->toHTML();
-			if(!empty($html)) print $html;
+			if(!empty($html)) $this->set('message',$html);
 		}
 		include($this->sTemplate_);
 	}

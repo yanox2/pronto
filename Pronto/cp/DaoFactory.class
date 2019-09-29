@@ -22,7 +22,7 @@ class DaoFactory{
 		$suffix = '_'.$sName;
 		if($sName == 'DEFAULT') $suffix = '';
 		if(!defined('C_PR_DAO_TYPE'.$suffix)){
-			throw new Exception(C_PR_ERR_ENOENT,OMSG('PR_E008','C_PR_DAO_XXX'));
+			throw new Exception(C_PR_ERR_ENOENT,SMSG('PR_E008','C_PR_DAO_XXX'));
 		}
 		$type = constant('C_PR_DAO_TYPE'.$suffix);
 		$host = constant('C_PR_DAO_HOST'.$suffix);

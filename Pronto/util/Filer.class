@@ -48,7 +48,7 @@ class Filer{
 			if($inout) $opt = 'rw';
 			$fp = fopen($this->sInFile_,$opt);
 			if(($fp === false)||($fp === null)){
-				$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fopen',$this->sInFile_));
+				$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fopen',$this->sInFile_));
 				return $rc;
 			}
 			$this->oInFp_ = $fp;
@@ -58,7 +58,7 @@ class Filer{
 		if(!empty($this->sOutFile_)){
 			$fp = fopen($this->sOutFile_,'w');
 			if($fp === false){
-				$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fopen',$this->sOutFile_));
+				$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fopen',$this->sOutFile_));
 				return $rc;
 			}
 			$this->oOutFp_ = $fp;
@@ -119,7 +119,7 @@ class Filer{
 		if($this->sInFile_ == $this->sOutFile_) $fp = $this->oInFp_;
 		$rc = fwrite($fp,mb_convert_encoding($rsText,$this->sToEnc_,$this->sFromEnc_));
 		if($rc === false){
-			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fwrite',$this->sOutFile_));
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fwrite',$this->sOutFile_));
 			return $rc;
 		}
 		return 0;
@@ -186,12 +186,12 @@ class Filer{
 	// ファイル情報
 	public static function fileStat($rsFile){
 		if(!is_readable($rsFile)){
-			self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsFile));
+			self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsFile));
 			return null;
 		}
 		$stat = stat($rsFile);
 		if(!$stat){
-			self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','stat',$rsFile));
+			self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017','stat',$rsFile));
 			return null;
 		}
 
@@ -208,7 +208,7 @@ class Filer{
 		if(!file_exists($rsFile)) return 0;
 		$rc = unlink($rsFile);
 		if($rc === false){
-			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','unlink',$rsFile));
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017','unlink',$rsFile));
 			return $rc;
 		}
 		return 0;
@@ -217,7 +217,7 @@ class Filer{
 	// ディレクトリの削除
 	public static function removePath($rsPath){
 		if(!is_dir($rsPath)){
-			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E016',$rsPath));
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E016',$rsPath));
 			return $rc;
 		}
 		$files = glob($rsPath.'/*');
@@ -228,7 +228,7 @@ class Filer{
 		}
 		$rc = rmdir($rsPath);
 		if($rc === false){
-			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E017','rmdir',$rsPath));
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017','rmdir',$rsPath));
 			return $rc;
 		}
 		return 0;
@@ -243,6 +243,8 @@ class Filer{
 			$path .= '/'.$dir;
 			if(!file_exists($path)){
 				$rc = mkdir($path,$mode);
+				if(!$rc) return C_PR_ERR_ESYSTEM;
+				$rc = chmod($path,$mode);
 				if(!$rc) return C_PR_ERR_ESYSTEM;
 			}
 		}
@@ -293,27 +295,269 @@ class Filer{
 	}
 
 	// ファイルのダウンロード
-	public static function download($rsPath){
+	public static function download($rsPath,$rsType=null){
 		if(!is_readable($rsPath)){
-			$rc = self::errorOccured(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsPath));
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsPath));
 			return $rc;
 		}
 		session_cache_limiter("private_no_expire");
 
+		$mimeType = $rsType;
+		if($rsType == 'file'){
+			$mimeType = 'application/octet-stream';
+		}else if($rsType == 'img'){
+			$mimeType = self::GetContentType($rsPath);
+		}
+
 		$size = filesize($rsPath);
 		if($size == 0) return C_PR_ERR_ENOENT;
+		$time = date('r',filemtime($rsPath));
 
-		$path = mb_convert_encoding($rsPath,'SJIS','UTF-8');
-		header("Content-Disposition: attachment; filename=\"".basename($path)."\"");
+		$path = $rsPath;
+		if($rsType == 'file'){
+			$path = mb_convert_encoding($rsPath,'SJIS','UTF-8');
+			header("Content-Disposition: attachment; filename=\"".basename($path)."\"");
+		}
+		header("Content-Type: ".$mimeType);
 		header("Content-Length: ".$size);
-		header("Content-Type: application/octet-stream");
+		header('Last-Modified: '.$time);
+		header('Connection: Keep-Alive');
 		readfile($path);
+	}
+
+	// 画像のダウンロード
+	public static function downImage($rsPath,$riReSize=0){
+		if(!is_readable($rsPath)){
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsPath));
+			return $rc;
+		}
+		session_cache_limiter("private_no_expire");
+		$mimeType = self::GetContentType($rsPath);
+		if(!preg_match('/jpeg|png|gif|bmp/i',$mimeType,$matches)) return;
+		$gtype = $matches[0];
+
+		// size
+		$size = getimagesize($rsPath);
+		$resize = $size;
+		$noReSz = false;
+		if(($size[0] <= $riReSize)&&($size[1] <= $riReSize)) $noReSz = true;
+
+		if($riReSize > 0){
+			if($size[0] > $size[1]){
+				$resize[0] = $riReSize;
+				$resize[1] = $size[1] * $riReSize / $size[0];
+			}else{
+				$resize[1] = $riReSize;
+				$resize[0] = $size[0] * $riReSize / $size[1];
+			}
+		}else{
+			$noReSz = true;
+		}
+
+		// dst
+		if($gtype == 'jpeg'){
+			$src_im = imagecreatefromjpeg($rsPath);
+		}else if($gtype == 'png'){
+			$src_im = imagecreatefrompng($rsPath);
+		}else if($gtype == 'gif'){
+			$src_im = imagecreatefromgif($rsPath);
+		}else{
+			$src_im = imagecreatefromwbmp($rsPath);
+		}
+		if($noReSz){
+			$dst_im = $src_im;
+		}else{
+			$dst_im = ImageCreateTrueColor($resize[0],$resize[1]);
+			ImageCopyResampled($dst_im,$src_im,0,0,0,0,$resize[0],$resize[1],$size[0],$size[1]);
+		}
+
+		// out
+		header("Content-Type: ".$mimeType);
+		if($gtype == 'jpeg'){
+			imagejpeg($dst_im);
+		}else if($gtype == 'png'){
+			imagepng($dst_im);
+		}else if($gtype == 'gif'){
+			imagegif($dst_im);
+		}else{
+			imagewbmp($dst_im);
+		}
+
+		// destory
+		imagedestroy($src_im);
+		if(!$noReSz) imagedestroy($dst_im);
+	}
+
+	public function resizeImage($raSzParams,$rsSrc,$rsOut=null){
+		$resize = $raSzParams['resize'];
+		$retype = $raSzParams['retype'];
+		if(!$rsOut) $rsOut = $rsSrc;
+
+		if(!is_readable($rsSrc)){
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsSrc));
+			return $rc;
+		}
+		session_cache_limiter("private_no_expire");
+		$mimetype = self::GetContentType($rsSrc);
+		if(!preg_match('/jpeg|png|gif|bmp/i',$mimetype,$matches)){
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017',$rsSrc));
+			return $rc;
+		}
+		$gtype = $matches[0];
+		$exif = null;
+		$orientation = 1;
+		if($gtype == 'jpeg'){
+			$exif = exif_read_data($rsSrc,'EXIF');
+			if($exif) $orientation = $exif['Orientation'];
+		}
+
+		// resize
+		$src_im = self::getImage($rsSrc,$gtype);
+		$dst_im = $src_im;
+		$size = getimagesize($rsSrc);
+		$rz = array();
+		$reSz = false;
+		if(($resize)&&(($size[0] > $resize)||($size[1] > $resize))){
+			if($size[0] > $size[1]){
+				$rz[0] = $resize;
+				$rz[1] = $size[1] * $resize / $size[0];
+			}else{
+				$rz[1] = $resize;
+				$rz[0] = $size[0] * $resize / $size[1];
+			}
+			$dst_im = ImageCreateTrueColor($rz[0],$rz[1]);
+			ImageCopyResampled($dst_im,$src_im,0,0,0,0,$rz[0],$rz[1],$size[0],$size[1]);
+			$reSz = true;
+		}
+		if(($orientation == 1)&&((!$retype)||($retype == $gtype))){
+			if($reSz){
+				self::outputImage($rsOut,$gtype,$dst_im);
+			}else if($rsSrc != $rsOut){	
+				$rc = copy($rsSrc,$rsOut);
+			}
+			return 0;
+		}
+
+		// 回転
+		if($orientation > 1){
+			$degrees = 0;
+			$mode = null;
+			if($orientation == 2){ // 水平反転
+				$mode = 'IMG_FLIP_VERTICAL';
+			}else if($orientation == 3){ // （反時計回りに）180°回転
+				$degrees = 180;
+			}else if($orientation == 4){ // 垂直反転
+				$mode = 'IMG_FLIP_HORIZONTAL';
+			}else if($orientation == 5){ // 水平反転、 反時計回りに90°回転
+				$degrees = 270;
+				$mode = 'IMG_FLIP_VERTICAL';
+			}else if($orientation == 6){ // 反時計回りに90°回転
+				$degrees = 270;
+			}else if($orientation == 7){ // 垂直反転、 反時計回りに90°回転
+				$degrees = 90;
+				$mode = 'IMG_FLIP_HORIZONTAL';
+			}else if($orientation == 8){ // 反時計回りに270°回転
+				$degrees = 90;
+			}
+			if($mode) $dst_im = imageflip($dst_im,$mode);
+			if($degrees > 0) $dst_im = imagerotate($dst_im,$degrees,0);
+		}
+
+		// retype
+		$type = $gtype;
+		if($retype) $type = $retype;
+		self::outputImage($rsOut,$type,$dst_im);
+		return 0;
+	}
+
+	public function clipImage($raSzParams,$rsSrc,$rsOut=null){
+		$sx = $raSzParams['sx'];
+		$sy = $raSzParams['sy'];
+		$mx = $raSzParams['mx'];
+		$my = $raSzParams['my'];
+		if(!$rsOut) $rsOut = $rsSrc;
+
+		if(!is_readable($rsSrc)){
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsSrc));
+			return $rc;
+		}
+		session_cache_limiter("private_no_expire");
+		$mimetype = self::GetContentType($rsSrc);
+		if(!preg_match('/jpeg|png|gif|bmp/i',$mimetype,$matches)){
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017',$rsSrc));
+			return $rc;
+		}
+		$gtype = $matches[0];
+
+		// resize
+		$src_im = self::getImage($rsSrc,$gtype);
+		$dst_im = $src_im;
+		$size = getimagesize($rsSrc);
+		if(($sx > $size[0])||($sy > $size[1])){
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E011',$sx.' '.$sy));
+			return $rc;
+		}
+		if($mx > $size[0]) $mx = $size[0];
+		if($my > $size[1]) $my = $size[1];
+		if(($sx == 0)&&($sy == 0)&&($mx == $size[0])&&($my == $size[1])){
+			if($rsSrc != $rsOut){	
+				$rc = copy($rsSrc,$rsOut);
+			}
+			return 0;
+		}
+
+		// crop
+		$w = $mx - $sx;
+		$h = $my - $sy;
+		if(($w == 0)||($h == 0)){
+			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E011',$sx.' '.$sy.' '.$mx.' '.$my));
+			return $rc;
+		}
+		$rect = array('x'=>$sx,'y'=>$sy,'width'=>$w,'height'=>$h);
+		$dst_im = imagecrop($src_im,$rect);
+		self::outputImage($rsOut,$gtype,$dst_im);
+		return 0;
 	}
 
 	public static function getContentType($rsPath=null){
 		$info = new \FInfo(FILEINFO_MIME_TYPE);
 		$mime = $info->file($rsPath);
 		return $mime;
+	}
+
+	public static function getImage($rsSrc,$rsType=null){
+		if(!$rsType){
+			$mimetype = self::GetContentType($rsSrc);
+			if(!preg_match('/jpeg|png|gif|bmp/i',$mimetype,$matches)){
+				$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017',$rsSrc));
+				return $rc;
+			}
+			$rsType = $matches[0];
+		}
+		$im = null;
+		if($rsType == 'jpeg'){
+			$im = imagecreatefromjpeg($rsSrc);
+		}else if($rsType == 'png'){
+			$im = imagecreatefrompng($rsSrc);
+		}else if($rsType == 'gif'){
+			$im = imagecreatefromgif($rsSrc);
+		}else{
+			$im = imagecreatefromwbmp($rsSrc);
+		}
+		return $im;
+	}
+
+	public static function outputImage($rsOut,$rsType,$roImage){
+		if($rsType == 'jpeg'){
+			imagejpeg($roImage,$rsOut);
+		}else if($rsType == 'png'){
+			imagepng($roImage,$rsOut);
+		}else if($rsType == 'gif'){
+			imagegif($roImage,$rsOut);
+		}else{
+			imagewbmp($roImage,$rsOut);
+		}
+		imagedestroy($roImage);
 	}
 
 /*---------------------------------------------------------------------------*

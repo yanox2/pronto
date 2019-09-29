@@ -103,26 +103,27 @@ class View{
 		$code = $roExp->getCode();
 		$message = $roExp->getMessage();
 
-		$ren = new OnePane();
 		if($code == C_PR_ERR_EACCESS){ // 403
-			$ren->setTemplate($path.'403.tpl');
+			$this->oRenderer_->setTemplate($path.'403.tpl');
 		}else if($code == C_PR_ERR_ENODEST){ // 404
-			$ren->setTemplate($path.'404.tpl');
+			$this->oRenderer_->setTemplate($path.'404.tpl');
 		}else if($code == C_PR_ERR_EINTERNAL){ // 500
-			$ren->setTemplate($path.'500.tpl');
+			$this->oRenderer_->setTemplate($path.'500.tpl');
 		}else if($code == C_PR_ERR_ETEMP){ // 503
-			$ren->setTemplate($path.'503.tpl');
+			$this->oRenderer_->setTemplate($path.'503.tpl');
 		}else if($roExp->isFatalError()){
-			$ren->set('exp',$roExp);
-			$ren->setTemplate($path.'fatal.tpl');
+			$this->oRenderer_->set('exp',$roExp);
+			$this->oRenderer_->setTemplate($path.'fatal.tpl');
 		}else if($this->hasRenderer()){
-			$ren = $this->getRenderer();
-			if(!$ren->hasTemplate()) return;
-			$ren->setMessage($message,Message::ERROR);
+			$this->oRenderer_ = $this->getRenderer();
+			if(!$this->oRenderer_->hasTemplate()){
+				$this->oRenderer_->setTemplate($path.'error.tpl');
+			}
+			$this->oRenderer_->setMessage($message,Message::ERROR);
 		}else{
 			return;
 		}
-		$ren->render();
+		$this->oRenderer_->render();
 	}
 }
 ?>

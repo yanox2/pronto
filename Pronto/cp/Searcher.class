@@ -12,14 +12,24 @@ class Searcher{
 
 	private $sKeywords_ = null;
 	private $aColumns_ = null;
-	private $aItems_ = array();
+	private $aParams_ = null;
+
+	private $aJoinColumns_ = null;
 
 	public function __construct($raColumns=null){
 		$this->aColumns_ = $raColumns;
 	}
 
-	public function addItem($roNameTag){
-		$this->aItems_[$roNameTag->sVariable] = $roNameTag;
+	public function setParams($raParams){
+		$this->aParams_ = $raParams;
+	}
+
+	public function addColumn($rsColumn){
+		$this->aColumns_[] = $sColumn;
+	}
+
+	public function addColumnByNameTag($roNameTag){
+		$this->aColumns_[] = $roNameTag->sColumn;
 	}
 
 	public function getKeywords(){
@@ -28,6 +38,10 @@ class Searcher{
 
 	public function setKeywords($sKeywords){
 		$this->sKeywords_ = $sKeywords;
+	}
+
+	public function setJoinColumns($raColumns){
+		$this->aJoinColumns_ = $raColumns;
 	}
 
 /*---------------------------------------------------------------------------*
@@ -40,49 +54,36 @@ class Searcher{
 	public function load(){
 		if(isset($_GET['kw'])){
 			$this->sKeywords_ = Misc::trim(urldecode($_GET['kw']));
+		}else if(array_key_exists('kw',$this->aParams_)){
+			$this->sKeywords_ = Misc::trim(urldecode($this->aParams_['kw']));
 		}else if(HTTPUtil::isPost(self::PREFIX.'Keywords')){
 			$this->sKeywords_ = HTTPUtil::getPostValue(self::PREFIX.'Keywords',Model::DT_TEXT);
 		}else{
 			$this->sKeywords_ = Misc::trim($_SESSION[self::PREFIX.'Keywords']);
 		}
-		if(empty($this->aItems_)) return;
-		foreach($this->aItems_ as $var=>$tag){
-			if(isset($_GET[$tag->sPost])){
-				$this->{$var} = Misc::trim(urldecode($_GET[$tag->sPost]));
-			}else if(HTTPUtil::isPost($tag->sPost)){
-				$this->{$var} = HTTPUtil::getPostValue($tag->sPost,Model::DT_TEXT);
-			}else{
-				$this->{$var} = Misc::trim($_SESSION[self::PREFIX.$var]);
-			}
-		}
 	}
 
 	public function save(){
 		$_SESSION[self::PREFIX.'Keywords'] = $this->sKeywords_;
-		if(empty($this->aItems_)) return;
-		foreach($this->aItems_ as $var=>$tag){
-			$_SESSION[self::PREFIX.$var] = $this->{$var};
-		}
 	}
 
 	public function clear(){
 		unset($_SESSION[self::PREFIX.'Keywords']);
-		if(empty($this->aItems_)) return;
-		foreach($this->aItems_ as $var=>$tag){
-			unset($_SESSION[self::PREFIX.$var]);
-		}
 	}
 
 	public function getSqlToken($rbCountOnly=false){
-		$cols = array();
-		if(!empty($this->aItems_)){
-			foreach($this->aItems_ as $var=>$tag){
-				if(!empty($this->{$var})) $cols[$tag->sColumn] = $this->{$var};
-			}
-		}
-		$token = null;
+		$cols = $this->aColumns_;
+		$token = '';
 		if(!empty($this->sKeywords_)){
-			$token = Dao::getTokenKeywords($this->sKeywords,$cols);
+			if($cols) $token = Dao::getTokenKeywords($this->sKeywords_,$cols);
+			if($this->aJoinColumns_){
+				$jtoken = Dao::getTokenKeywords($this->sKeywords_,$this->aJoinColumns_);
+				if($token){
+					$token = '('.$token.' or '.$jtoken.')';
+				}else{
+					$token = '('.$jtoken.')';
+				}
+			}
 		}
 		return $token;
 	}

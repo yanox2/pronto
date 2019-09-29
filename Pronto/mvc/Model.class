@@ -15,14 +15,14 @@ class Model{
 	const DT_ALPHANUMERIC = 4;
 	const DT_TEXT = 5;
 	const DT_PASSWORD = 6;
-	const DT_URL = 7;
-	const DT_EMAIL = 8;
-	const DT_POSTCODE = 9;
-	const DT_TEL = 10;
+	const DT_URL = 7; // https://～
+	const DT_EMAIL = 8; // *@*
+	const DT_POSTCODE = 9; // 数字3-数字4
+	const DT_TEL = 10; // 
 	const DT_DATE = 11;
-	const DT_DOMAIN = 12;
-	const DT_LOGINID = 13;
-	const DT_URI = 14;
+	const DT_DOMAIN = 12; // 英数字, .
+	const DT_LOGINID = 13; // 英数字, .@_!#$%*+=-
+	const DT_URI = 14; // https抜き
 
 	// get data type
 	const TYPE_PRIMARY = 0;
@@ -42,11 +42,15 @@ class Model{
 	protected $oDao = null;
 	protected $oPager = null;
 	protected $oSearcher = null;
+	protected $oContainer = null;
 
 	protected $aResults = null;
 	protected $sIdxSep = '---';
 	protected $sInsKeyVal = null;
 	protected $sMyName_ = null;
+
+	protected $bAjax = false;
+	protected $sSep = '<br>';
 
 	private $iIdxType_ = 0;
 	private $aIndex_ = null;
@@ -82,15 +86,38 @@ class Model{
 		$this->aIndex_ = $raIndex;
 	}
 
+	public function getSqlError(){
+		return $this->oDao->getError();
+	}
+
+	public function getDupKey(){
+		$error = $this->oDao->getError();
+		$pos1 = strrpos($error,"key '");
+		if($pos1 === false) return null;
+		$pos1 += 5;
+		$pos2 = strrpos($error,"'");
+		$dkey = substr($error,$pos1,$pos2-$pos1);		
+		return $dkey;
+	}
+
 /*---------------------------------------------------------------------------*
  * Public Methods
  *---------------------------------------------------------------------------*/
-	public function getContainer($rsName){
-		return $this->{'o'.$rsName};
+	public function getContainer(){
+		return $this->oContainer;
+	}
+
+	public function setContainer($roContainer){
+		$this->oContainer = $roContainer;
 	}
 
 	public function getResults(){
 		return $this->aResults;
+	}
+
+	public function ajax(){
+		$this->bAjax = true;
+		$this->sSep = "\n";
 	}
 
 /*---------------------------------------------------------------------------*
@@ -98,7 +125,7 @@ class Model{
  *---------------------------------------------------------------------------*/
 	protected function checkPost($rmVal,$riType,$rbAccEmpty=false){
 		$rc = 0;
-		if(empty($rmVal)){
+		if(!$rmVal){
 			if($rbAccEmpty) return 0;
 			return C_PR_ERR_ENOENT;
 		}
@@ -148,6 +175,7 @@ class Model{
 		$err = $this->getPostErrorMsg($riCode,$rsName,$riType,$raCStrs);
 		if(!empty($err)){
 			$sp = $rsSep;
+			if($sp === null) $sp = $this->sSep;
 			if(empty($rsMsg)) $sp = '';
 			$msg = $sp.$err;
 		}
@@ -218,8 +246,9 @@ class Model{
 		return true;
 	}
 
-	protected function num($rsTable,$raWheres=null,$rsToken=null){
+	protected function num($rsTable,$raWheres=null,$rsToken=null,$rsSel=null){
 		$aSels = array('count(*) as ccnt');
+		if(!empty($rsSel)) $aSels = array($rsSel.' as ccnt');
 		$rc = $this->oDao->select($rsTable,$aSels,$raWheres,$rsToken);
 		if($rc == 0) $rc = $this->oDao->fetch();
 		if($rc != 0) return $rc;
@@ -231,6 +260,10 @@ class Model{
 	protected function read($rsTable,$raWheres=null,$rsToken=null,$raSels=null){
 		$aSels = $raSels;
 		if(empty($aSels)) $aSels = array('*');
+		if(!is_array($aSels)){
+			$this->errorOccured(C_PR_ERR_EPARAM,'PR_E011','select field is not array.');
+			return C_PR_ERR_EPARAM;
+		}
 		$rc = $this->oDao->select($rsTable,$aSels,$raWheres,$rsToken);
 		if($rc == 0) $rc = $this->oDao->fetch();
 		if($rc != 0) return $rc;
@@ -254,9 +287,36 @@ class Model{
 		$aSels = $raSels;
 		if(empty($aSels)) $aSels = array('*');
 		$hasWheres = !empty($raWheres);
+		if(strpos(mb_strtolower($rsToken),'where') !== false) $hasWheres = true;
 		$token = $rsToken;
-		if(!empty($roPager)) $token = $this->addToken($token,$roPager->getSqlToken(),$hasWheres);
-		if(!empty($roSearcher)) $token = $this->addToken($token,$roSearcher->getSqlToken(),$hasWheres);
+		if(!empty($roSearcher)){
+			$stkn = $roSearcher->getSqlToken();
+			if($stkn){
+				if($hasWheres){
+					$stkn = 'and '.$stkn;
+				}else{
+					$stkn = 'where '.$stkn;
+				}
+			}
+			$token = $this->addToken($token,$stkn,$hasWheres);
+		}
+		if(!empty($roPager)){
+			if(!$roPager->hasAllNum()){
+				$xtoken = $token;
+				$len = strpos(mb_strtolower($token),'order by');
+				if($len !== false) $xtoken = substr($token,0,$len);
+				$rc = $this->oDao->select($rsTable,array('count(*) as mccnt'),$raWheres,$xtoken);
+				if(($rc == 0)&&($this->oDao->fetch() == 0)){
+					$rec = $this->oDao->getAll();
+					$num = $rec['mccnt'];
+					$len = strpos(mb_strtolower($xtoken),'group by');
+					if($len !== false) $num = $this->oDao->getNumRows();
+					$this->oDao->free();
+					$roPager->setAllNum($num);
+				}
+			}
+			$token = $this->addToken($token,$roPager->getSqlToken(),$hasWheres);
+		}
 		$rc = $this->oDao->select($rsTable,$aSels,$raWheres,$token);
 		if($rc != 0) return $rc;
 
@@ -290,26 +350,33 @@ class Model{
 	}
 
 	protected function addToken($rsToken,$rsAddToken,$rbHasWheres=false){
+		if(!$rsAddToken) return $rsToken;
 		if(empty($rsToken)) $rsToken = '';
 		$rsToken = trim($rsToken);
 		$rsAddToken = trim($rsAddToken);
 		if(strpos($rsAddToken,'limit') === 0){
 			$token = $rsToken.' '.$rsAddToken;
+			return $token;
+		}else if(strpos($rsAddToken,'group by') === 0){
+
+		}
+
+		$token = $rsToken;
+		if($rsToken == ''){
+			$token = 'where '.$rsToken;
+			if($rbHasWheres) $token = 'and '.$rsToken;
+		}
+		$strs1 = explode('group by',$token);
+		$strs2 = explode('order by',$token);
+		$strs3 = explode('limit',$token);
+		if(count($strs1) == 2){
+			$token = $strs1[0].$rsAddToken.' group by'.$strs1[1];
+		}else if(count($strs2) == 2){
+			$token = $strs2[0].$rsAddToken.' order by'.$strs2[1];
+		}else if(count($strs3) == 2){
+			$token = $strs3[0].$rsAddToken.' limit'.$strs3[1];
 		}else{
-			$token = '';
-			if($rsToken == ''){
-				$token = 'where '.$rsToken;
-				if($rbHasWheres) $token = 'and '.$rsToken;
-			}
-			$strs1 = explode('group by',$token);
-			$strs2 = explode('order by',$token);
-			if(count($strs1) == 2){
-				$token = $strs1[0].$rsAddToken.' '.$strs1[1];
-			}else if(count($strs2) == 2){
-				$token = $strs2[0].$rsAddToken.' '.$strs2[1];
-			}else{
-				$token .= $rsAddToken;
-			}
+			$token .= $rsAddToken;
 		}
 		return $token;
 	}
@@ -390,8 +457,8 @@ class Model{
 			$rc = $this->oDao->insert($rsTable,$aIns);
 			if(($kind != self::INS_NONE)&&($rc == C_PR_ERR_EEXIST)){
 				// Duplicate entry 'key' for key 'PRIMARY';
-				$error = $this->oDao->getError();
-				if(strpos($error,'PRIMARY') === false){
+				$dkey = $this->getDupKey();
+				if($dkey != 'PRIMARY'){
 					$this->errorOccured(C_PR_ERR_EDBACS,'PR_E014','add2:');
 					return C_PR_ERR_EDBACS;
 				}
@@ -401,7 +468,7 @@ class Model{
 					$aIns[$key] = md5(uniqid(mt_rand(),true));
 				}
 				$loop = true;
-			}else if($rc == C_PR_ERR_EEXIST){
+			}else if(($rc == C_PR_ERR_EEXIST)||($rc == C_PR_ERR_EDUPLICATE)){
 				return $rc;
 			}else if($rc != 0){
 				$this->errorOccured(C_PR_ERR_EDBACS,'PR_E014','add3:rc='.$rc);

@@ -41,6 +41,7 @@ define('C_PR_ERR_EINVAL',-9);
 define('C_PR_ERR_ESHORT',-10);
 define('C_PR_ERR_ELOCKED',-11);
 define('C_PR_ERR_ENOLOGIN',-12);
+define('C_PR_ERR_EDUPLICATE',-13);
 define('C_PR_ERR_EACCESS',-403);
 define('C_PR_ERR_ENODEST',-404);
 define('C_PR_ERR_EINTERNAL',-500);
@@ -64,7 +65,9 @@ $loader->setSysRoot(C_PR_SRCPATH);
 SysEnv::setenv();
 if(php_sapi_name() != 'cli'){
 	Request::generate(C_PR_YOUR_DIRECTORYINDEX);
-	if(!empty(C_PR_YOUR_DISPROOT)) $loader->setYourDispRoot(C_PR_YOUR_DISPROOT);
+	Request::setSubSystem();
+	//if(!empty(C_PR_YOUR_DISPROOT)) $loader->setYourDispRoot(C_PR_YOUR_DISPROOT);
+	if(C_PR_YOUR_DISPROOT) $loader->setYourDispRoot(C_PR_YOUR_DISPROOT);
 
 	if(C_PR_MAINTE_MODE == 2){
 		require_once(C_PR_MAINTE_PATH);

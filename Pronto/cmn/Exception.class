@@ -21,9 +21,26 @@ class Exception extends \Exception{
 		$this->bFatal_ = $rbFatal;
 		$str = 'Exp!:rc='.$this->iCode_.':'.$rsMessage;
 		if($rbFatal){
-			 $str = 'fatal:'.$str.':stack='.var_export($this->getTrace(),true);
+			$dbtc = $this->getTrace();
+			$trcs = array();
+			if($dbtc){
+				foreach($dbtc as $i=>$dbgs){
+					if((array_key_exists('function',$dbgs))&&(strpos($dbgs['function'],'PR\\ELOG') !== false)) continue;
+					if((array_key_exists('class',$dbgs))&&(strpos($dbgs['class'],'PR\\Trace') !== false)) continue;
+					if((array_key_exists('class',$dbgs))&&(strpos($dbgs['class'],'PR\\Exception') !== false)) continue;
+					if((array_key_exists('file',$dbgs))&&(strpos($dbgs['file'],'/system/core/') !== false)) continue;
+					$trcs[$i] = $dbgs;
+				}
+			}
+			$str = 'fatal:'.$str.':stack='.var_export($trcs,true);
 		}
-		if($riCode > -400) ELOG($str,true);
+		//$level = SysEnv::getTraceLevel();
+		if($riCode > -400) ELOG($str,$true,2);
+	}
+
+	public function setMessage($rsMessage){
+		$this->sMessage_ = $rsMessage;
+		$this->message = $rsMessage;
 	}
 
 	public function getCaption(){

@@ -12,6 +12,7 @@ class Mail{
 	private $sTitle_ = null;
 	private $sHeader_ = null;
 	private $sFooter_ = null;
+	private $sMailer_ = 'pronto';
 
 	public function __construct(){
 	}
@@ -31,6 +32,10 @@ class Mail{
 		$this->sFooter_ = $rsFooter;
 	}
 
+	public function setMailer($rsMailer){
+		$this->sMailer_ = $rsMailer;
+	}
+
 	public function setFrom($raFrom){
 		$this->aFrom_ = $raFrom;
 	}
@@ -42,40 +47,46 @@ class Mail{
 		mb_internal_encoding('UTF-8');
 		$sbj = $rsSubject;
 		if(!empty($this->sTitle_)) $sbj = $this->sTitle_.' '.$sbj;
-		$body = $rsBody;
+		$body = Misc::parentheses($rsBody);
 		$body = mb_convert_kana($body,'KV','UTF-8');
 		if(!empty($this->sHeader_)) $body = $this->sHeader_."\r\n\r\n".$body;
 		if(!empty($this->sFooter_)) $body .= "\r\n\r\n\r\n".$this->sFooter_;
 
 		// メールヘッダ作成
-		$sbj = mb_encode_mimeheader($sbj);
+		$sbj = mb_encode_mimeheader($sbj,'UTF-8');
 		//$sbj = mb_encode_mimeheader($sbj,"ISO-2022-JP","B","");
 		$sendto = '';
 		$sp = '';
 		foreach($raTo as $email=>$name){
-			$name = mb_encode_mimeheader($name);
+			$name = mb_encode_mimeheader($name,'UTF-8');
 			$sendto .= $sp.$name.' <'.$email.'>';
 			$sp = ', ';
 		}
-		$from = 'From: ';
+		$from = '';
 		$sp = '';
 		foreach($this->aFrom_ as $email=>$name){
-			$name = mb_encode_mimeheader($name);
+			$name = mb_encode_mimeheader($name,'UTF-8');
 			$from .= $name.' <'.$email.'>';
 			$sp = ', ';
 		}
-		$from .= "\r\n";
 
 		// CC,BCCの設定
 		$boundary = '-----------------Boundary_'.uniqid('b');
-		$additional  = $from."MIME-Version: 1.0\r\n";
-		$additional .= "X-Mailer: Pronto\r\n";
-		$additional .= "Content-Type: text/plain; charset=\"ISO-2022-JP\"\r\n";
+		$additional  = "MIME-Version: 1.0\r\n";
+		$additional .= "X-Mailer: ".$this->sMailer_."\r\n";
+		if(empty($raDoc)){
+			$additional .= 'Content-Type: text/plain; charset="UTF-8"'."\r\n";
+		}else{
+			$additional .= 'Content-Type: multipart/mixed; boundary="'.$boundary.'"'."\r\n";
+		}
+		$additional .= 'From: '.$from."\r\n";
+		$additional .= 'Reply-To: '.$from."\r\n";
+	    $additional .= 'Return-Path: '.$from."\r\n";
 		if(!empty($raCC)){
 			$additional .= 'Cc: ';
 			$sp = '';
 			foreach($raCC as $email => $name){
-				$name = mb_encode_mimeheader($name);
+				$name = mb_encode_mimeheader($name,'UTF-8');
 				$additional .= $sp.$name.' <'.$email.'>';
 				$sp = ', ';
 			}
@@ -85,39 +96,29 @@ class Mail{
 			$additional .= 'Bcc: ';
 			$sp = '';
 			foreach($raBCC as $email => $name){
-				$name = mb_encode_mimeheader($name);
+				$name = mb_encode_mimeheader($name,'UTF-8');
 				$additional .= $sp.$name.' <'.$email.'>';
 				$sp = ', ';
 			}
 			$additional .= "\r\n";
 		}
 
-		// 本文の作成
-		$mbody = '';
-		if(!empty($raDoc)){
-			$mbody .= "--".$boundary."\r\n";
-			$mbody .= 'Content-Type: text/plain; charset="ISO-2022-JP"'."\r\n";
-			$mbody .= 'Content-Transfer-Encoding: 7bit'."\r\n\r\n";
-		}
-		$mbody .= mb_convert_encoding($body,'ISO-2022-JP');
-		$mbody .= "\r\n";
-
 		// 添付ファイルの取得
 		if(!empty($raDoc)){
-			$additional .= 'Content-Type: multipart/mixed; boundary="'.$boundary.'"'."\r\n";
-			list($key,$val) = each($raDoc);
-			$file = mb_convert_encoding($key,'ISO-2022-JP');
-			$file = mb_encode_mimeheader($file);
-			$fdata = $val;
+			list($fname,$path) = each($raDoc);
+			$fdata = file_get_contents($path);
+			$mbody  = "\r\n--".$boundary."\r\n";
+			$mbody .= 'Content-Type: text/plain; charset="UTF-8"'."\r\n\r\n";
+			$mbody .= $body."\r\n";
 			$mbody .= '--'.$boundary."\r\n";
-			$mbody .= 'Content-Type: application/octet-stream; name="'.$file.'"'."\r\n";
+			$mbody .= 'Content-Type: application/octet-stream; name="'.$fname.'"'."\r\n";
 			$mbody .= 'Content-Transfer-Encoding: base64'."\r\n";
-			$mbody .= 'Content-Disposition: attachment; filename="'.$file.'"'."\r\n\r\n";
-			$mbody .= chunk_split(base64_encode($fdata));
-			$mbody .= "\r\n";
+			$mbody .= 'Content-Disposition: attachment; filename="'.$fname.'"'."\r\n\r\n";
+			$mbody .= chunk_split(base64_encode($fdata))."\r\n";
 			$mbody .= '--'.$boundary."--\r\n";
+			$body = $mbody;
 		}
-		$rc = mail($sendto,$sbj,$mbody,$additional);
+		$rc = mail($sendto,$sbj,$body,$additional);
 		return $rc;
 	}
 
