@@ -75,4 +75,7 @@ if(php_sapi_name() != 'cli'){
 	}
 }
 
+// Load Functions
+Misc::loadFunc();
+
 ?>

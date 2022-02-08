@@ -108,7 +108,7 @@ class ClassLoader{
 				}
 			}
 		}
-		ELOG(SMSG('PR_E001',$rsClassName));
+		//ELOG(SMSG('PR_E001',$rsClassName));
 	}
 }
 ?>

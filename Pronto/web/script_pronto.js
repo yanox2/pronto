@@ -30,6 +30,10 @@ var PRDebug = {
 
 	alert: function(msg){
 		if(this.level_ == 1) alert(msg.replace(/[\n\r]/g,"\r\n"));
+	},
+
+	alertF: function(msg){
+		alert(msg.replace(/[\n\r]/g,"\r\n"));
 	}
 };
 var prdebug = Object.create(PRDebug);
@@ -190,7 +194,7 @@ var PRAjax = {
 		var rvals = new Array(3);
 		$.ajax(param).done(function(res,status,xhr){
 			this.indicator_.disable(true);
-			if(res.message) prdebug.alert(res.message);
+			if(res.message) prdebug.alertF(res.message);
 			if(res.confirm){
 				if(!window.confirm(res.confirm)) return;
 			}
@@ -377,10 +381,8 @@ var PRFormAjax = {
 			this.current_ = listener;
 			this.state_ = 1;
 		}
-		if(res){
-			if(res.submitId){
-				this.addSubmit(res.submitId,res.submitType,res.submitHover);
-			}
+		if((res)&&(res.submit)){
+			this.addSubmit(res.submit.submitId,res.submit.type,res.submit.hover);
 		}
 	},
 

@@ -71,8 +71,8 @@ class Filer{
 		if(!empty($this->oOutFp_)) fclose($this->oOutFp_);
 	}
 
-	public function getLine($rbNoTrim=false){
-		$str = fgets($this->oInFp_,1024);
+	public function getLine($rbNoTrim=false,$riLength=1024){
+		$str = fgets($this->oInFp_,$riLength);
 		if($str === false) return null;
 		$line = mb_convert_encoding($str,'UTF-8',$this->sFromEnc_);
 		if(!$rbNoTrim) $line = Misc::trim($line);
@@ -113,11 +113,16 @@ class Filer{
 		return $sEnc;
 	}
 
-	public function writeFile($rsText,$rbRet=false){
+	public function writeFile($rsText,$rbRet=false,$rsFromEnc='UTF-8'){
 		if($rbRet) $rsText .= "\r\n";
+		$fromEnc = $this->sFromEnc_;
+		if($rsFromEnc) $fromEnc = $rsFromEnc;
 		$fp = $this->oOutFp_;
 		if($this->sInFile_ == $this->sOutFile_) $fp = $this->oInFp_;
-		$rc = fwrite($fp,mb_convert_encoding($rsText,$this->sToEnc_,$this->sFromEnc_));
+		if($fromEnc != $this->sToEnc_){
+			$rsText = mb_convert_encoding($rsText,$this->sToEnc_,$fromEnc);
+		}
+		$rc = fwrite($fp,$rsText);
 		if($rc === false){
 			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017','fwrite',$this->sOutFile_));
 			return $rc;
@@ -295,12 +300,12 @@ class Filer{
 	}
 
 	// ファイルのダウンロード
-	public static function download($rsPath,$rsType=null){
+	public static function download($rsPath,$rsType=null,$rsFName=null){
 		if(!is_readable($rsPath)){
 			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsPath));
 			return $rc;
 		}
-		session_cache_limiter("private_no_expire");
+		//session_cache_limiter("private_no_expire"); // session_start前でないと使えない
 
 		$mimeType = $rsType;
 		if($rsType == 'file'){
@@ -314,14 +319,22 @@ class Filer{
 		$time = date('r',filemtime($rsPath));
 
 		$path = $rsPath;
+		$fname = basename($rsPath);
+		if($rsFName) $fname = $rsFName;
 		if($rsType == 'file'){
-			$path = mb_convert_encoding($rsPath,'SJIS','UTF-8');
-			header("Content-Disposition: attachment; filename=\"".basename($path)."\"");
+			$fname = mb_convert_encoding($fname,'SJIS','UTF-8');
+			header("Content-Disposition: attachment; filename=\"".$fname."\"");
 		}
+		header("Expire: -1");
+		header("Cache-Control: private, max-age=60, pre-check=30");
+		header("Pragma:");
 		header("Content-Type: ".$mimeType);
+		header('X-Content-Type-Options: nosniff');
 		header("Content-Length: ".$size);
 		header('Last-Modified: '.$time);
-		header('Connection: Keep-Alive');
+		header('Connection: close');
+		//header('Connection: Keep-Alive');
+		if($size > 5000000) while(ob_get_level()) ob_end_clean();
 		readfile($path);
 	}
 
@@ -331,13 +344,15 @@ class Filer{
 			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsPath));
 			return $rc;
 		}
-		session_cache_limiter("private_no_expire");
-		$mimeType = self::GetContentType($rsPath);
+		//session_cache_limiter("private_no_expire"); // session_start前でないと使えない
+		$size = getimagesize($rsPath);
+		//$mimeType = self::GetContentType($rsPath);
+		$mimeType = $size['mime'];
 		if(!preg_match('/jpeg|png|gif|bmp/i',$mimeType,$matches)) return;
 		$gtype = $matches[0];
 
 		// size
-		$size = getimagesize($rsPath);
+		//$size = getimagesize($rsPath);
 		$resize = $size;
 		$noReSz = false;
 		if(($size[0] <= $riReSize)&&($size[1] <= $riReSize)) $noReSz = true;
@@ -362,7 +377,7 @@ class Filer{
 		}else if($gtype == 'gif'){
 			$src_im = imagecreatefromgif($rsPath);
 		}else{
-			$src_im = imagecreatefromwbmp($rsPath);
+			$src_im = imagecreatefrombmp($rsPath);
 		}
 		if($noReSz){
 			$dst_im = $src_im;
@@ -372,7 +387,17 @@ class Filer{
 		}
 
 		// out
+		$hsize = filesize($rsPath);
+		if($hsize == 0) return C_PR_ERR_ENOENT;
+		$htime = date('r',filemtime($rsPath));
+		//header("Expire: -1");
+		//header("Cache-Control: private, max-age=60, pre-check=30");
+		//header("Pragma:");
 		header("Content-Type: ".$mimeType);
+		//header('X-Content-Type-Options: nosniff');
+		//header("Content-Length: ".$hsize);
+		//header('Last-Modified: '.$htime);
+		//header('Connection: close');
 		if($gtype == 'jpeg'){
 			imagejpeg($dst_im);
 		}else if($gtype == 'png'){
@@ -380,7 +405,7 @@ class Filer{
 		}else if($gtype == 'gif'){
 			imagegif($dst_im);
 		}else{
-			imagewbmp($dst_im);
+			imagebmp($dst_im);
 		}
 
 		// destory
@@ -397,8 +422,10 @@ class Filer{
 			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E015',$rsSrc));
 			return $rc;
 		}
-		session_cache_limiter("private_no_expire");
-		$mimetype = self::GetContentType($rsSrc);
+		//session_cache_limiter("private_no_expire");
+		$size = getimagesize($rsSrc);
+		//$mimetype = self::GetContentType($rsSrc);
+		$mimetype = $size['mime'];
 		if(!preg_match('/jpeg|png|gif|bmp/i',$mimetype,$matches)){
 			$rc = self::errorOccurred(C_PR_ERR_ESYSTEM,SMSG('PR_E017',$rsSrc));
 			return $rc;
@@ -414,7 +441,7 @@ class Filer{
 		// resize
 		$src_im = self::getImage($rsSrc,$gtype);
 		$dst_im = $src_im;
-		$size = getimagesize($rsSrc);
+		//$size = getimagesize($rsSrc);
 		$rz = array();
 		$reSz = false;
 		if(($resize)&&(($size[0] > $resize)||($size[1] > $resize))){
@@ -542,7 +569,7 @@ class Filer{
 		}else if($rsType == 'gif'){
 			$im = imagecreatefromgif($rsSrc);
 		}else{
-			$im = imagecreatefromwbmp($rsSrc);
+			$im = imagecreatefrombmp($rsSrc);
 		}
 		return $im;
 	}
@@ -555,7 +582,7 @@ class Filer{
 		}else if($rsType == 'gif'){
 			imagegif($roImage,$rsOut);
 		}else{
-			imagewbmp($roImage,$rsOut);
+			imagebmp($roImage,$rsOut);
 		}
 		imagedestroy($roImage);
 	}

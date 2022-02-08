@@ -292,7 +292,7 @@ class Container extends Model{
 		return $msg;
 	}
 
-	public function checkPostByTargetX($riMinLen=0,$riMaxLen=0,$riKind=0){
+	public function checkPostByTargetX($raAccEmpties=null,$riMinLen=0,$riMaxLen=0,$riKind=0){
 		$this->_getEntity();
 		if(empty($this->aTargets)) return null;
 		$msgs = array();
@@ -301,7 +301,9 @@ class Container extends Model{
 			if($tag->iType == Model::DT_PASSWORD){
 				$rc = $this->checkPasswordX($var,$riMinLen,$riMaxLen,$riKind);
 			}else{
-				$rc = $this->checkPostX($var);
+				$accEmpty = false;
+				if(InKey($raAccEmpties,array($var))) $accEmpty = $raAccEmpties[$var];
+				$rc = $this->checkPostX($var,$accEmpty);
 			}
 			if($rc != 0){
 				$msgs[] = $this->getPostErrorMsgX($var,$rc,$riMinLen,$riMaxLen,$riKind);

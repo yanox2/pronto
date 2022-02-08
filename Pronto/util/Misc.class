@@ -111,8 +111,9 @@ class Misc{
 	}
 
 	public static function trim($rsStr,$rsMask=null){
-		$str = preg_replace('/^[ 　]+/u','',$rsStr);
-		$str = preg_replace('/[ 　]+$/u','',$str);
+		//$str = preg_replace('/^[ 　]+/u','',$rsStr);
+		//$str = preg_replace('/[ 　]+$/u','',$str);
+		$str = mb_convert_kana($rsStr,'s','UTF-8');
 		if(empty($rsMask)){
 			$str = trim($str);
 		}else{
@@ -165,6 +166,46 @@ class Misc{
 		    return '<'.$uri.'>';
 		},$str);
 		return $newStr;
+	}
+
+	public static function charType($msg,$types,$more=null){
+		$pattern = '';
+/*
+		if(in_array('all',$types)) $pattern .= 'a-zA-Zａ-ｚＡ-Ｚ0-9０-９ぁ-んーァ-ヶー一-龠♯＜＞（）％＆＿＠－＝！：；＊＋．，？｛｝「」＾＄｜／￥”’#<>\(\)%&_@\-=!:;\*\+\.,\?\{\}\[\]\^\$\|\/\\\"\'\s\t　';
+		if(in_array('set1',$types)) $pattern .= 'a-zA-Zａ-ｚＡ-Ｚ0-9０-９ぁ-んーァ-ヶー一-龠♯＜＞（）％＆＿＠－#<>\(\)%&_@\-\s\t　';
+		if(in_array('alpha',$types)) $pattern .= 'a-zA-Z';
+		if(in_array('alphaZ',$types)) $pattern .= 'ａ-ｚＡ-Ｚ';
+		if(in_array('numeric',$types)) $pattern .= '0-9';
+		if(in_array('numericZ',$types)) $pattern .= '０-９';
+		if(in_array('kana',$types)) $pattern .= 'ぁ-んーァ-ヶー一-龠';
+		if(in_array('symbolSZ',$types)) $pattern .= '♯＜＞（）％＆＿＠－';
+		if(in_array('symbolS',$types)) $pattern .= '#<>\(\)%&_@\-';
+		if(in_array('symbolZ',$types)) $pattern .= '♯＜＞（）％＆＿＠－＝！：；＊＋．，？｛｝「」＾＄｜／￥”’';
+		if(in_array('symbol',$types)) $pattern .= '#<>\(\)%&_@\-=!:;\*\+\.,\?\{\}\[\]\^\$\|\/\\\"\'';
+		if(in_array('space',$types)) $pattern .= '\s\t　';
+		if($more) $pattern .= $more;
+*/
+		// 半角記号
+		// !"#$%&'()=~|-^\@[;:],./`{+*}<>?_
+		// #$%&-@,./_
+		//
+		if(in_array('all',$types)) $pattern .= 'a-zA-Zａ-ｚＡ-Ｚ0-9０-９ぁ-んーァ-ヶー一-龠！”＃＄％＆’（）＝～｜－＾￥＠［；：］、。／‘｛＋＊｝＜＞？＿!\"#\$%&\'\(\)=~\|\-\^\\\\@\[;:\],\.\/`\{\+\*\}<>\?_\s\t　';
+		if(in_array('set1',$types)) $pattern .= 'a-zA-Zａ-ｚＡ-Ｚ0-9０-９ぁ-んーァ-ヶー一-龠＃＄％＆－＠、。／＿#\$%&\-@,\.\/_\s\t　';
+		if(in_array('alpha',$types)) $pattern .= 'a-zA-Z';
+		if(in_array('alphaZ',$types)) $pattern .= 'ａ-ｚＡ-Ｚ';
+		if(in_array('numeric',$types)) $pattern .= '0-9';
+		if(in_array('numericZ',$types)) $pattern .= '０-９';
+		if(in_array('kana',$types)) $pattern .= 'ぁ-んーァ-ヶー一-龠';
+		if(in_array('symbolSZ',$types)) $pattern .= '＃＄％＆－＠、。／＿';
+		if(in_array('symbolS',$types)) $pattern .= '#\$%&\-@,\.\/_';
+		if(in_array('symbolZ',$types)) $pattern .= '！”＃＄％＆’（）＝～｜－＾￥＠［；：］、。／‘｛＋＊｝＜＞？＿';
+		if(in_array('symbol',$types)) $pattern .= '!\"#\$%&\'\(\)=~\|\-\^\\\\@\[;:\],\.\/`\{\+\*\}<>\?_';
+		if(in_array('space',$types)) $pattern .= '\s\t　';
+		if($more) $pattern .= $more;
+
+		$pattern = "/^[".$pattern."]+$/u";
+		if(preg_match($pattern,$msg)) return true;
+		return false;
 	}
 
 /*---------------------------------------------------------------------------*
@@ -345,14 +386,20 @@ class Misc{
 		return false;
 	}
 
-	public static function getOneTimeSes($rsName){
-		$data = $_SESSION[C_PR_PREFIX_SESSION.$rsName];
-		unset($_SESSION[C_PR_PREFIX_SESSION.$rsName]);
+	public static function getOneTimeSes($rsName=null,$rsPrefix=null){
+		if(!$rsPrefix) $rsPrefix = C_PR_PREFIX_SESSION;
+		if(!$rsName) $rsName = 'name';
+		$data = $_SESSION[$rsPrefix.$rsName];
+		unset($_SESSION[$rsPrefix.$rsName]);
 		return $data;
 	}
 
-	public function setOneTimeSes($rsName,$rmData){
-		$_SESSION[C_PR_PREFIX_SESSION.$rsName] = $rmData;
+	public static function setOneTimeSes($rsName=null,$rmData=null,$rsPrefix=null){
+		if(!$rsPrefix) $rsPrefix = C_PR_PREFIX_SESSION;
+		if(!$rmData) $rmData = uniqid($rsPrefix,true);
+		if(!$rsName) $rsName = 'name';
+		$_SESSION[$rsPrefix.$rsName] = $rmData;
+		return $rmData;
 	}
 }
 

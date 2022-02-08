@@ -47,7 +47,7 @@ define('C_PR_DAO_PASSWORD_DB1','pass');
 define('C_PR_DAO_NAME_DB1','pronto_resource_manager');
 
 // Parameters
-define('C_PR_CRYPT_BLOWFISH',1);
+define('C_PR_CRYPT_BLOWFISH',0);
 define('DS','/');
 
 // Include
