@@ -307,6 +307,8 @@ class ModelGenerator extends Batch{
 			$typeStr = '\\PR\\Model::DT_LOGINID';
 		}else if($type == Model::DT_URI){
 			$typeStr = '\\PR\\Model::DT_URI';
+		}else if($type == Model::DT_ALPHASYMBOL){
+			$typeStr = '\\PR\\Model::DT_ALPHASYMBOL';
 		}
 		return $typeStr;
 	}

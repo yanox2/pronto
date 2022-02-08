@@ -6,7 +6,7 @@
  *---------------------------------------------------------------------------*/
 namespace PR;
 
-class Model{
+abstract class Model{
 
 	// data type
 	const DT_NUMERIC = 1;
@@ -15,14 +15,15 @@ class Model{
 	const DT_ALPHANUMERIC = 4;
 	const DT_TEXT = 5;
 	const DT_PASSWORD = 6;
-	const DT_URL = 7; // https://～
+	const DT_URL = 7; // https://～, -_.!~*'()a-zA-Z0-9;/?:@&=+$,%#
 	const DT_EMAIL = 8; // *@*
 	const DT_POSTCODE = 9; // 数字3-数字4
 	const DT_TEL = 10; // 
 	const DT_DATE = 11;
 	const DT_DOMAIN = 12; // 英数字, .
 	const DT_LOGINID = 13; // 英数字, .@_!#$%*+=-
-	const DT_URI = 14; // https抜き
+	const DT_URI = 14; // https抜き, -_.!~*'()a-zA-Z0-9;/?:@&=+$,%#
+	const DT_ALPHASYMBOL = 15; // 英数記号, -_.!~*'()a-zA-Z0-9;/?:@&=+$,%#
 
 	// get data type
 	const TYPE_PRIMARY = 0;
@@ -160,6 +161,8 @@ class Model{
 			if(!HTTPUtil::isAlphabet($rmVal,3)) $rc = C_PR_ERR_EPARAM;
 		}else if($riType == self::DT_URI){
 			if(!HTTPUtil::isURL($rmVal,true)) $rc = C_PR_ERR_EPARAM;
+		}else if($riType == self::DT_ALPHASYMBOL){
+			if(!HTTPUtil::isAlphabet($rmVal,4)) $rc = C_PR_ERR_EPARAM;
 		}
 		return $rc;
 	}
@@ -227,6 +230,8 @@ class Model{
 				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D012'));
 			}else if($riType == self::DT_URI){
 				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D013'));
+			}else if($riType == self::DT_ALPHASYMBOL){
+				$msg = OMSG('PR_E104',$rsName,OMSG('PR_D014'));
 			}
 		}
 		return $msg;

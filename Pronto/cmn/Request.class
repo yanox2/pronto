@@ -71,7 +71,7 @@ class Request{
 				$dir = Misc::trim(substr(self::$sPATH,strlen($root)),'/');
 				if(empty($dir)) $dir = '';
 			}else{
-				ELOG(SMSG('PR_E005',self::$sPATH,$root));
+				//ELOG(SMSG('PR_E005',self::$sPATH,$root));
 			}
 		}
 		self::$sSUBDIR = $dir;

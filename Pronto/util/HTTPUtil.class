@@ -129,10 +129,14 @@ class HTTPUtil{
 			$value = $rsVal;
 			break;
 		  case Model::DT_NUMERIC: // 数値
-			$value = intval(mb_convert_kana($rsVal,'a'));
+			//$value = intval(mb_convert_kana($rsVal,'a'));
+			$value = mb_convert_kana($rsVal,'a');
+			if(is_numeric($value)) $value = intval($value);
 			break;
 		  case Model::DT_FLOAT:
-			$value = floatval(mb_convert_kana($rsVal,'a'));
+			//$value = floatval(mb_convert_kana($rsVal,'a'));
+			$value = mb_convert_kana($rsVal,'a');
+			if(is_float($value)) $value = floatval($value);
 			break;
 		  case Model::DT_ALPHABET:
 		  case Model::DT_ALPHANUMERIC:
@@ -145,6 +149,7 @@ class HTTPUtil{
 		  case Model::DT_DOMAIN:
 		  case Model::DT_LOGINID:
 		  case Model::DT_URI:
+		  case Model::DT_ALPHASYMBOL:
 			$value = mb_convert_kana($rsVal,'a');
 			break;
 		  case Model::DT_TEXT: // 全角かなカナ
@@ -393,6 +398,10 @@ class HTTPUtil{
 			if(preg_match('/^[a-zA-Z0-9\.]+$/',$rsStr)) return true;
 		}else if($riType == 3){
 			if(preg_match('/^[a-zA-Z0-9\.@_!#$%\*\+\=-]+$/',$rsStr)) return true;
+		}else if($riType == 4){ // !#$%()-^|@`[{+*]},<.>_ 【"&'=~;:/?】は使えない
+			if(preg_match('/^[a-zA-Z0-9!#\$%\(\)\-\^\|@`\[\{\+\*\]\},<\.>_]+$/',$rsStr)) return true;
+		}else if($riType == 5){ // !"#$%&'()-=^~\|@`[{;+:*]},<.>/?_
+			if(preg_match('/^[a-zA-Z0-9!"#\$%\&\'\(\)\-\=\^~\\\|@`\[\{;\+:\*\]\},<\.>\/\?_]+$/',$rsStr)) return true;
 		}
 		return false;
 	}
