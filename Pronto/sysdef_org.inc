@@ -14,7 +14,7 @@ define('C_PR_ROOT',dirname(__FILE__));
 define('C_PR_SYSLOCALE',1); // system locale 1:japanese 2:english
 
 // Sub System
-define('C_PR_SUBSYS_MODE',0); // 0:no sub system 1:sub domain 2:URI
+define('C_PR_SUBSYS_MODE',0); // 0:no sub system 1:sub domain 2:URI 3:another
 define('C_PR_SUBSYS_MAINDOMAIN',''); // for distinguishing sub domain
 define('C_PR_SUBSYS_URIROOT',''); // for distinguishing sub directory
 
@@ -48,7 +48,7 @@ define('C_PR_DAO_NAME_DB1','pronto_resource_manager');
 
 // Parameters
 define('C_PR_CRYPT_BLOWFISH',0);
-define('DS','/');
+define('DS',DIRECTORY_SEPARATOR);
 
 // Include
 require_once(C_PR_ROOT.'/def.inc');
