@@ -1,0 +1,57 @@
+@charset "utf-8";
+/**
+ * Style
+ * スタイルシート
+ *
+ */
+
+body{
+	font-size: 14px;
+	color: dimgray;
+	background-color: white;
+	font-family: "メイリオ",Meiryo,"Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+.bg_header{
+	background-color: dimgray;
+}
+.bg_left{
+	background-color: #ebeff4;
+}
+.bg_center{
+	/*background-color: ivory;*/
+}
+.bg_centerL{
+	background-color: ivory;
+}
+.bg_centerR{
+	background-color: #EBE9E9;
+}
+.bg_footer{
+	margin-right: calc(var(--bs-gutter-x) * -.5);
+	margin-left: calc(var(--bs-gutter-x) * -.5);
+	background-color: silver;
+}
+#lay_footer{
+	padding-right: calc(var(--bs-gutter-x) * .5);
+	padding-left: calc(var(--bs-gutter-x) * .5);
+}
+
+/* デモ用 */
+.colString{
+	margin: 0 auto;
+	text-align: center;
+	font-size: 300px;
+	line-height: 600px;
+	color: red;
+	overflow: hidden;
+	opacity: 0.2;
+}
+.colString2{
+	margin: 0 auto;
+	text-align: center;
+	font-size: 300px;
+	line-height: 600px;
+	color: blue;
+	overflow: hidden;
+	opacity: 0.1;
+}

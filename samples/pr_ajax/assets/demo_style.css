@@ -1,0 +1,77 @@
+@charset "utf-8";
+/**
+ * Style
+ * スタイルシート
+ *
+ */
+
+body{
+	font-size: 14px;
+	color: #333333;
+	background-color: #f2f2f2;
+	font-family: "メイリオ",Meiryo,"Helvetica Neue",Helvetica,Arial,sans-serif;
+	word-break: break-all;
+}
+p{
+	margin: 0;
+	word-break: break-all;
+}
+pre{
+	margin-bottom: 0;
+	font-size: 12px;
+	tab-size: 4;
+}
+pre > code{
+	color: silver;
+}
+pre > code.bold{
+	color: blue;
+}
+.btn{
+	font-size: 12px;
+}
+.inputPanel{
+	margin: 0 auto;
+	padding: 10px;
+	background-color: lightyellow;
+}
+.resultPanel{
+	height: 100px;
+	padding: 5px;
+	font-size: 12px;
+	border: 1px solid;
+	overflow-y: scroll;
+	word-break: break-word;
+}
+.rightPane{
+	height: 100%;
+	padding-left: 5px;
+	border-left: 1px solid silver;
+}
+.scode{
+	max-height: 500px;
+	color: black;
+	word-break: break-word;
+}
+.scode_title{
+	font-weight: bold;
+	color: indianred;
+	border-bottom: 1px solid;
+}
+.scode > .desc{
+	margin: 5px 0;
+	font-size: 12px;
+	color: gray;
+	border-top: 1px dotted gray;
+}
+.ele{
+	width: 50%;
+	height: 30px;
+	margin: 5px;
+	padding: 5px;
+	text-align: center;
+	vertical-align: middle;
+	color: white;
+	background-color: lightgray;
+	border: 1px solid black;
+}
