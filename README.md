@@ -13,7 +13,7 @@ https://app.softwarenote.info/samples/
 
 **・Ajax - JavaScript**
 
-unpublished
+https://softwarenote.info/p3430/
 
 
 
