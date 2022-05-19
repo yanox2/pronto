@@ -33,7 +33,7 @@
 	}
 }
 
-var ajax = new MyAjax("response.php", "post");
+var ajax = new MyAjax();
 ajax.onSubmit("#id_form1", "入力された内容で送信します。よろしいですか？");
 </code>
 </pre>

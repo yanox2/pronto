@@ -17,7 +17,7 @@ getAjax.setHeaders({"abc":"def"});
 getAjax.onClick("#id_button", data);
 
 // GET (JSONP, set header)
-var getAjax2 = new PRAjax(url, "get", false, true);
+var getAjax2 = new PRAjax(url, "get", true);
 getAjax2.setHeaders({"abc":"def"});
 getAjax2.onClick("#id_btnGET", data);
 

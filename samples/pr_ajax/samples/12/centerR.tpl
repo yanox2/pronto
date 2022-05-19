@@ -19,11 +19,11 @@ var getAjax = new PRAjax(url, "get");
 getAjax.onClick("#id_button", data);
 
 // get (JSONP)
-var getAjax2 = new PRAjax(url, "get", false, true);
+var getAjax2 = new PRAjax(url, "get", true);
 getAjax2.onClick("#id_btnGET", data);
 
 // post (JSONP)
-var postAjax = new PRAjax(url, "post", false, true);
+var postAjax = new PRAjax(url, "post", true);
 postAjax.onClick("#id_btnPOST", data);
 </code>
 </pre>
