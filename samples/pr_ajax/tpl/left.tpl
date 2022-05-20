@@ -35,6 +35,8 @@ $uri = $_SERVER['REQUEST_URI'];
  <div class="<?=$cls?> menu"><a href="<?=$v_menuPath?>/08/index.php">08. 送信後の自動処理3</a></div>
 <?php $cls = ''; if(strpos($uri,'/09/')) $cls = 'crrtMenu'; ?>
  <div class="<?=$cls?> menu"><a href="<?=$v_menuPath?>/09/index.php">09. 前処理・後処理</a></div>
+<?php $cls = ''; if(strpos($uri,'/09a/')) $cls = 'crrtMenu'; ?>
+ <div class="<?=$cls?> menu"><a href="<?=$v_menuPath?>/09a/index.php">09a. 前後処理<span style="font-size:12px;">（コールバック）</span></a></div>
 <?php $cls = ''; if(strpos($uri,'/10/')) $cls = 'crrtMenu'; ?>
  <div class="<?=$cls?> menu"><a href="<?=$v_menuPath?>/10/index.php">10. 前処理・後処理2</a></div>
 <?php $cls = ''; if(strpos($uri,'/11/')) $cls = 'crrtMenu'; ?>

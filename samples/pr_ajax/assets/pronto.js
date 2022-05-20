@@ -188,12 +188,27 @@ class PRAjax{
 	#params = null;
 	#jsonpName = "jsonpcb";
 	#state =  0; // 0:disabled,1:enabled
+	#beforeCB = null;
+	#afterCB = null;
+	#failCB = null;
 
 	before(args){
+		if(this.#beforeCB) return this.#beforeCB(args);
 	}
 	after(data, textStatus, jqXHR, confirm){
+		if(this.#afterCB) return this.#afterCB(data, textStatus, jqXHR, confirm);
 	}
 	fail(jqXHR, textStatus, errorThrown){
+		if(this.#failCB) return this.#failCB(jqXHR, textStatus, errorThrown);
+	}
+	setBefore(callback){
+		this.#beforeCB = callback;
+	}
+	setAfter(callback){
+		this.#afterCB = callback;
+	}
+	setFail(callback){
+		this.#failCB = callback;
 	}
 
 	constructor(url=null, type="post", isJsonP=false, multiPart=false){
