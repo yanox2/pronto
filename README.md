@@ -5,7 +5,7 @@ PHP & Ajax JavaScript Library
 
 # Demo
 
-https://app.softwarenote.info/samples/
+<a href="https://app.softwarenote.info/samples/" target="_blank">https://app.softwarenote.info/samples/</a>
 
 
 
@@ -13,13 +13,13 @@ https://app.softwarenote.info/samples/
 
 **・Ajax - JavaScript**
 
-https://softwarenote.info/p3430/
+<a href="https://softwarenote.info/p3430/" target="_blank">https://softwarenote.info/p3430/</a>
 
 
 
 **・View - PHP**
 
-https://softwarenote.info/p3376/
+<a href="https://softwarenote.info/p3376/" target="_blank">https://softwarenote.info/p3376/</a>
 
 
 

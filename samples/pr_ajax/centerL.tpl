@@ -21,6 +21,7 @@ $v_menuPath = 'samples';
   <div><a href="<?=$v_menuPath?>/07/index.php">07. 送信後の自動処理2（HTML編集）</a></div>
   <div><a href="<?=$v_menuPath?>/08/index.php">08. 送信後の自動処理3（フォーム値編集）</a></div>
   <div><a href="<?=$v_menuPath?>/09/index.php">09. 前処理・後処理</a></div>
+  <div><a href="<?=$v_menuPath?>/09a/index.php">09a. 前処理・後処理（コールバック）</a></div>
   <div><a href="<?=$v_menuPath?>/10/index.php">10. 前処理・後処理2（ユーザデータ編集）</a></div>
   <div><a href="<?=$v_menuPath?>/11/index.php">11. クロスサイト 許可あり</a></div>
   <div><a href="<?=$v_menuPath?>/12/index.php">12. クロスサイト 許可なし（JSONP）</a></div>
