@@ -1,5 +1,5 @@
 # Pronto
-PHP & Ajax JavaScript Library
+Open Source PHP & Ajax & View Library
 
 
 
