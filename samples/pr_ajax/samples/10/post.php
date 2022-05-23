@@ -15,6 +15,9 @@ sleep(2);
 
 $res = array();
 $res['vals'] = $vals;
+$names = explode(' ', $name);
+$dom = array('id_first'.$no=>$names[0], 'id_last'.$no=>$names[1], 'id_handle'.$no=>$handle);
+$res['dom']['replace'] = $dom;
 resAjax(0, 'ユーザデータを編集しました。', $res, null, true);
 
 ?>

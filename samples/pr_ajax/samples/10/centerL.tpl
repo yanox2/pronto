@@ -23,37 +23,37 @@
 <tbody>
 <tr id="id_list1">
  <th scope="row">1</th>
- <td>James</td>
- <td>Smith</td>
- <td>@james</td>
+ <td id="id_first1">James</td>
+ <td id="id_last1">Smith</td>
+ <td id="id_handle1">@james</td>
  <td><i id="id_icon1" class="bi bi-pencil"></i></td>
 </tr>
 <tr id="id_list2">
  <th scope="row">2</th>
- <td>John</td>
- <td>Williams</td>
- <td>@john</td>
+ <td id="id_first2">John</td>
+ <td id="id_last2">Williams</td>
+ <td id="id_handle2">@john</td>
  <td><i id="id_icon2" class="bi bi-pencil"></i></td>
 </tr>
 <tr id="id_list3">
  <th scope="row">3</th>
- <td>Robert</td>
- <td>Brown</td>
- <td>@robert</td>
+ <td id="id_first3">Robert</td>
+ <td id="id_last3">Brown</td>
+ <td id="id_handle3">@robert</td>
  <td><i id="id_icon3" class="bi bi-pencil"></i></td>
 </tr>
 <tr id="id_list4">
  <th scope="row">4</th>
- <td>Michael</td>
- <td>Miller</td>
- <td>@michael</td>
+ <td id="id_first4">Michael</td>
+ <td id="id_last4">Miller</td>
+ <td id="id_handle4">@michael</td>
  <td><i id="id_icon4" class="bi bi-pencil"></i></td>
 </tr>
 <tr id="id_list5">
  <th scope="row">5</th>
- <td>William</td>
- <td>Taylor</td>
- <td>@william</td>
+ <td id="id_first5">William</td>
+ <td id="id_last5">Taylor</td>
+ <td id="id_handle5">@william</td>
  <td><i id="id_icon5" class="bi bi-pencil"></i></td>
 </tr>
 </tbody>
