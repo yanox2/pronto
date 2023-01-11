@@ -25,6 +25,15 @@ Ajax を簡単でシンプルに利用できるようなライブラリを作成
 ・送信時の前処理・後処理の実装<br>
 ・JSONP による強制クロスサイトアクセス<br>
 
+samples/pr_ajx をドキュメントルート上に展開し、それぞれのパラメータを指定すると動くかと思います。<br>
+demo_def.inc の define 値を自環境にあうよう修正すれば動作の確認はできます。<br>
+
+**C_ASSETS_URI**： assets へのパス<br>
+**C_GLOBAL_TEMPLATE_PATH**： 共通テンプレートへのパス<br>
+**C_CROSSSITE_ORIGIN**： クロスサイトのサンプルを動作させる場合に自身の URL を指定<br>
+**C_CROSSSITE_DEST**： クロスサイトのサンプルを動作させる場合にアクセス先 URL を指定<br>
+
+
 詳細はこちら<br>
 <a href="https://softwarenote.info/p3430/" target="_blank">https://softwarenote.info/p3430/</a>
 
@@ -39,6 +48,13 @@ Demo & Tutorial<br>
 グリッドシステムによりレイアウトのパターンをある程度自由に組み合わせることができます。<br>
 主に簡素な Web システムの画面を作成する際に利用することを想定しています。<br>
 なお、このテンプレートは PHP で動作するよう作られています。<br>
+
+samples/pr_view をドキュメントルート上に展開し、それぞれのパラメータを指定すると動くかと思います。
+demo_def.inc の define 値を自環境にあうよう修正すれば動作の確認はできます。
+
+**C_ASSETS_URI**： assets への URI
+**C_GLOBAL_TEMPLATE_PATH**： 共通テンプレートへの PATH
+
 
 詳細はこちら<br>
 <a href="https://softwarenote.info/p3376/" target="_blank">https://softwarenote.info/p3376/</a>
