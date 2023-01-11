@@ -1,5 +1,5 @@
 # Pronto
-Open Source Ajax & View & ORM Library
+Open Source Ajax & View templates & ORM Library
 
 # Demo
 
